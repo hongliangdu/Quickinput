@@ -8,7 +8,7 @@ class AboutUi : public QWidget
 
 public:
 
-	AboutUi(QWidget* parent = 0) : QWidget(parent)
+	AboutUi(QWidget* parent) : QWidget(parent)
 	{
 		ui.setupUi(this);
 		setWindowFlags(Qt::FramelessWindowHint);

@@ -8,13 +8,20 @@ namespace CG
 	class List
 	{
 	private:
-
 		ITEM* item = 0;
 		uint32 length = 0;
 
 	public:
-
-		ITEM& operator[](uint32 u) { return item[u]; }
+		ITEM& operator[](const uint32 pos) const
+		{
+			if (pos >= length && length) return item[length - 1];
+			return item[pos];
+		}
+		ITEM& Get(const uint32 pos = uint32Max) const
+		{
+			if (pos >= length && length) return item[length - 1];
+			return item[pos];
+		}
 
 		void Add()
 		{
@@ -86,27 +93,26 @@ namespace CG
 			return 1;
 		}
 
-		void Cop(List& list, uint32 begin = 0, uint32 end = UINT32_MAX)
+		void Cpy(List& list, uint32 begin = 0, uint32 end = uint32Max)
 		{
 			Emp();
 			for (; begin <= end && begin < list.len(); begin++) Add(list.item[begin]);
 		}
 
-		void Cut(List& list, uint32 begin = 0, uint32 end = UINT32_MAX)
+		void Cut(List& list, uint32 begin = 0, uint32 end = uint32Max)
 		{
 			for (; begin <= end && begin < list.len(); begin++) Add(list.item[begin]);
 		}
 
-		bool Del(uint32 pos)
+		bool Del(uint32 pos = uint32Max)
 		{
-			if (pos > (length - 1)) return 0;
+			if (length == 0) return 1;
 
-			if ((length - 1) == 0)
-			{
-				Emp();
-			}
+			if ((length - 1) == 0) Emp();
 			else
 			{
+				if (pos > (length - 1)) pos = (length - 1);
+
 				ITEM* cache = new ITEM[length - 1];
 				for (uint32 u = 0; u < length; u++)
 				{
@@ -131,6 +137,6 @@ namespace CG
 			length = 0;
 		}
 
-		uint32 len() { return length; }
+		uint32 len() const { return length; }
 	};
 }

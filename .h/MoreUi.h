@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <qevent.h>
-#include "QuickInputDef.h"
 #include "ui_MoreUi.h"
+#include "../static.h"
 
 class MoreUi : public QDialog
 {

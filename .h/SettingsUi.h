@@ -1,46 +1,40 @@
 ﻿#pragma once
-#pragma execution_character_set("utf-8")
 #include "ui_SettingsUi.h"
-#include "QuickInputDef.h"
+#include "../static.h"
 
 class SettingsUi : public QWidget
 {
 	Q_OBJECT
 
 public:
-
-	SettingsUi(QWidget* parent = 0, QuickInputStruct* qis = 0) : QWidget(parent)
+	SettingsUi(QWidget* parent) : QWidget(parent)
 	{
-		this->qis = qis;
-
 		ui.setupUi(this);
 		setWindowFlags(Qt::FramelessWindowHint);
 
-		ControlInit();
-		ControlEvent();
+		WidInit();
+		WidEvent();
 	}
 
 private:
-
 	Ui::SettingsUiClass ui;
+	SettingsData* sets = &Global::qi.set;
 
-	QuickInputStruct* qis;
-
-	void ControlInit()
+	void WidInit()
 	{
 		ui.hkKey->Mode(2);
 		ui.hkRec->Mode(0);
-		ui.hkKey->VirtualKey(qis->set.key & 0xFFFF, qis->set.key >> 16);
-		ui.hkRec->VirtualKey(qis->set.recKey);
+		ui.hkKey->VirtualKey(sets->key & 0xFFFF, sets->key >> 16);
+		ui.hkRec->VirtualKey(sets->recKey);
 
-		ui.chbShowTips->setChecked(qis->set.showTips);
-		ui.chbAudFx->setChecked(qis->set.audFx);
-		ui.chbMinMode->setChecked(qis->set.minMode);
+		ui.chbShowTips->setChecked(sets->showTips);
+		ui.chbAudFx->setChecked(sets->audFx);
+		ui.chbMinMode->setChecked(sets->minMode);
 		ui.chbStart->setChecked(Task::Find(L"QuickInput").result);
-		ui.chbZoom->setChecked(qis->set.wndZoom);
+		ui.chbZoom->setChecked(sets->wndZoom);
 	}
 
-	void ControlEvent()
+	void WidEvent()
 	{
 		connect(ui.hkKey, SIGNAL(changed()), this, SLOT(OnHkKey()));
 		connect(ui.hkRec, SIGNAL(changed()), this, SLOT(OnHkRec()));
@@ -55,32 +49,32 @@ private slots:
 
 	void OnHkKey()
 	{
-		qis->set.key = ui.hkKey->virtualKey();
-		SaveJson(qis);
+		sets->key = ui.hkKey->virtualKey();
+		SaveJson();
 	}
 
 	void OnHkRec()
 	{
-		qis->set.recKey = ui.hkRec->virtualKey();
-		SaveJson(qis);
+		sets->recKey = ui.hkRec->virtualKey();
+		SaveJson();
 	}
 
 	void OnAud()
 	{
-		qis->set.audFx = ui.chbAudFx->isChecked();
-		SaveJson(qis);
+		sets->audFx = ui.chbAudFx->isChecked();
+		SaveJson();
 	}
 
 	void OnShowTips()
 	{
-		qis->set.showTips = ui.chbShowTips->isChecked();
-		SaveJson(qis);
+		sets->showTips = ui.chbShowTips->isChecked();
+		SaveJson();
 	}
 
 	void OnMinMode()
 	{
-		qis->set.minMode = ui.chbMinMode->isChecked();
-		SaveJson(qis);
+		sets->minMode = ui.chbMinMode->isChecked();
+		SaveJson();
 	}
 
 	void OnStart()
@@ -105,7 +99,7 @@ private slots:
 
 	void OnZoom()
 	{
-		qis->set.wndZoom = ui.chbZoom->isChecked();
-		SaveJson(qis);
+		sets->wndZoom = ui.chbZoom->isChecked();
+		SaveJson();
 	}
 };

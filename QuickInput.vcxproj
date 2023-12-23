@@ -112,6 +112,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="static.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtUic Include=".ui\AboutUi.ui" />
@@ -128,9 +129,11 @@
     <QtMoc Include=".h\MainUi.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="static.h" />
     <QtMoc Include=".h\QColorSelection.h" />
     <QtMoc Include=".h\QPositionSelection.h" />
     <QtMoc Include=".h\QSelectionBox.h" />
+    <ClInclude Include=".h\QiItem.h" />
     <ClInclude Include=".h\TipsWindow.h" />
     <QtMoc Include=".h\EditUi.h" />
     <QtMoc Include=".h\MacroUi.h" />

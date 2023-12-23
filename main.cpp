@@ -2,41 +2,7 @@
 #include <qtextcodec.h>
 #include ".h/MainUi.h"
 #include ".h/TipsWindow.h"
-#include ".h/QuickInputDef.h"
-
-QuickInputStruct qis;
-
-QString UI::qiWait;
-QString UI::qiDown;
-QString UI::qiUp;
-QString UI::qiClick;
-QString UI::qiPos;
-QString UI::qiMove;
-QString UI::qiLoop;
-QString UI::qiText;
-QString UI::qiColor;
-QString UI::qiEnd;
-QString UI::qiEndLoop;
-std::wstring UI::qiOn;
-std::wstring UI::qiOff;
-QString UI::trOn;
-QString UI::trOff;
-QString UI::etChange;
-QString UI::etAdd;
-QString UI::etDel;
-QString UI::etEdit;
-QString UI::etFunc;
-QString UI::etParam;
-QString UI::rcStart;
-QString UI::rcStop;
-QString UI::rcClose;
-
-SIZE  TipsWindow::screen = { 0 };
-HANDLE TipsWindow::thread = 0;
-HWND TipsWindow::wnd = 0;
-UINT TipsWindow::time = 0;
-COLORREF  TipsWindow::color = 0;
-std::wstring  TipsWindow::text;
+#include "static.h"
 
 void InitUI(bool zoom)
 {
@@ -106,105 +72,104 @@ void InitUI(bool zoom)
 	}
 }
 
-uint8 ExcItem(Item* it)
+uint8 ExcItem(QiItem& item)
 {
-	if (!qis.state) return 1;
-	switch (it->type)
+	if (!Global::qi.state) return 1;
+	switch (item.type())
 	{
-	case Item::endLoop:
-		return 2;
-	case Item::end:
+	case QiAction::end:
 		return 1;
-	case Item::delay:
-		if (it->c)
+	case QiAction::delay:
+		if (QiDelayPtr(item)->ex)
 		{
-			int ms;
-			ms = it->b + (Rand(it->c, it->c - (it->c * 2)));
+			int32 ms;
+			ms = QiDelayPtr(item)->ms + (Rand(QiDelayPtr(item)->ex, QiDelayPtr(item)->ex - (QiDelayPtr(item)->ex * 2)));
 			if (ms < 0) ms = 0;
 			Thread::Sleep(ms);
 		}
-		else {
-			Thread::Sleep(it->b);
-		}
+		else Thread::Sleep(QiDelayPtr(item)->ms);
 		break;
-	case Item::down:
-		Input::State(it->a, 1, 214);
-		break;
-	case Item::up:
-		Input::State(it->a, 0, 214);
-		break;
-	case Item::click:
-		Input::State(it->a, 1, 214);
-		sleep(10);
-		Input::State(it->a, 0, 214);
-		sleep(10);
-		break;
-	case Item::pos:
-		sleep(10);
-		if (it->a)
+	case QiAction::key:
+		if (QiKeyPtr(item)->state == QiKey::down)
 		{
-			POINT pt;
-			pt.x = it->b + (Rand(it->a, (~it->a + 1)));
-			pt.y = it->c + (Rand(it->a, (~it->a + 1)));
-			Input::MoveToA(pt.x * 6.5535, pt.y * 6.5535);
+			Input::State(QiKeyPtr(item)->vk, 1, 214);
 		}
-		else {
-			Input::MoveToA(it->b * 6.5535, it->c * 6.5535);
-		}
-		sleep(10);
-		break;
-	case Item::move:
-		if (it->a)
+		else if (QiKeyPtr(item)->state == QiKey::up)
 		{
-			POINT pt;
-			pt.x = it->b + (Rand(it->a, (~it->a + 1)));
-			pt.y = it->c + (Rand(it->a, (~it->a + 1)));
-			Input::Move(pt.x, pt.y);
+			Input::State(QiKeyPtr(item)->vk, 0, 214);
+		}
+		else if (QiKeyPtr(item)->state == QiKey::click)
+		{
+			Thread::Sleep(10);
+			Input::State(QiKeyPtr(item)->vk, 1, 214);
+			Thread::Sleep(10);
+			Input::State(QiKeyPtr(item)->vk, 0, 214);
+			Thread::Sleep(10);
+		}
+		break;
+	case QiAction::mouse:
+		Thread::Sleep(10);
+		if (QiMousePtr(item)->ex)
+		{
+			POINT pt = { 0 };
+			pt.x = QiMousePtr(item)->x + (Rand(QiMousePtr(item)->ex, (~QiMousePtr(item)->ex + 1)));
+			pt.y = QiMousePtr(item)->y + (Rand(QiMousePtr(item)->ex, (~QiMousePtr(item)->ex + 1)));
+			if (QiMousePtr(item)->state == QiMouse::pos) Input::MoveToA(pt.x * 6.5535, pt.y * 6.5535);
+			else Input::Move(pt.x, pt.y);
 		}
 		else {
-			Input::Move(it->b, it->c);
+			if (QiMousePtr(item)->state == QiMouse::pos) Input::MoveToA(QiMousePtr(item)->x * 6.5535, QiMousePtr(item)->y * 6.5535);
+			else Input::Move(QiMousePtr(item)->y, QiMousePtr(item)->y);
 		}
+		Thread::Sleep(10);
 		break;
-	case Item::text:
-		System::ClipBoardText(it->s.c_str());
+	case QiAction::text:
+		System::ClipBoardText(QiTextPtr(item)->str.c_str());
 		break;
-	case Item::color:
+	case QiAction::color:
 	{
-		QColor color;
-		color.setRgba(QRgb(it->a));
-		RECT rect;
-		POINT pos;
-		pos = AbsToRel({ it->b >> 16, it->b & 0xFFFF });
-		rect.left = pos.x, rect.top = pos.y;
-		pos = AbsToRel({ it->c >> 16, it->c & 0xFFFF });
-		rect.right = pos.x, rect.bottom = pos.y;
-
-		bool result = Color::FindOr(qis.hdc, rect, RGB(color.red(), color.green(), color.blue()), color.alpha()).x;
-		if (it->d)
+		RECT rect = { 0 };
+		POINT pt = { 0 };
+		pt = AbsToRel({ QiColorPtr(item)->rect.left, QiColorPtr(item)->rect.top });
+		rect.left = pt.x, rect.top = pt.y;
+		pt = AbsToRel({ QiColorPtr(item)->rect.right, QiColorPtr(item)->rect.bottom });
+		rect.right = pt.x, rect.bottom = pt.y;
+		POINT pos = Color::FindOr(Global::qi.hdc, rect, QiColorPtr(item)->rgbe, GetAValue(QiColorPtr(item)->rgbe));
+		if (QiColorPtr(item)->state == QiColor::find)
 		{
-			if (!result) break;
+			if (pos.x)
+			{
+				for (uint32 u = 0; u < QiColorPtr(item)->next.len(); u++)
+				{
+					uint8 r = ExcItem(QiColorPtr(item)->next[u]);
+					if (r) return r;
+				}
+				if (QiColorPtr(item)->move == 1) Input::MoveTo(pos.x, pos.y);
+			}
 		}
 		else
 		{
-			if (result) break;
-		}
-		for (uint32 u = 0; u < it->next.len(); u++)
-		{
-			uint8 r = ExcItem(&it->next[u]);
-			if (r) return r;
+			if (!pos.x)
+			{
+				for (uint32 u = 0; u < QiColorPtr(item)->next.len(); u++)
+				{
+					uint8 r = ExcItem(QiColorPtr(item)->next[u]);
+					if (r) return r;
+				}
+			}
 		}
 		break;
 	}
-	case Item::loop:
+	case QiAction::loop:
 	{
-		if (it->b)
+		if (QiLoopPtr(item)->count)
 		{
-			for (uint32 i = 0; i < it->b; i++)
+			for (uint32 u = 0; u < QiLoopPtr(item)->count; u++)
 			{
-				for (uint32 ix = 0; ix < it->next.len(); ix++)
+				for (uint32 ux = 0; ux < QiLoopPtr(item)->next.len(); ux++)
 				{
-					uint8 r = ExcItem(&it->next[ix]);
-					if (r == 1) return 1;
+					uint8 r = ExcItem(QiLoopPtr(item)->next[u]);
+					if (r == 1) return r;
 					else if (r == 2) return 0;
 				}
 			}
@@ -213,9 +178,9 @@ uint8 ExcItem(Item* it)
 		{
 			while (1)
 			{
-				for (uint32 ix = 0; ix < it->next.len(); ix++)
+				for (uint32 u = 0; u < QiLoopPtr(item)->next.len(); u++)
 				{
-					uint8 r = ExcItem(&it->next[ix]);
+					uint8 r = ExcItem(QiLoopPtr(item)->next[u]);
 					if (r == 1) return 1;
 					else if (r == 2) return 0;
 				}
@@ -223,6 +188,8 @@ uint8 ExcItem(Item* it)
 		}
 		break;
 	}
+	case QiAction::loopEnd:
+		return 2;
 	}
 	return 0;
 }
@@ -232,15 +199,15 @@ DWORD CALLBACK ThreadQuickClick(LPVOID)
 	srand(clock());
 	uint32 b = 0;
 	uint32 e = 0;
-	if (qis.fun.quickClick.delay > 99) b = 50, e = qis.fun.quickClick.delay - 50;
-	else if (qis.fun.quickClick.delay > 1) b = qis.fun.quickClick.delay / 2, e = b;
-	else e = qis.fun.quickClick.delay;
+	if (Global::qi.fun.quickClick.delay > 99) b = 50, e = Global::qi.fun.quickClick.delay - 50;
+	else if (Global::qi.fun.quickClick.delay > 1) b = Global::qi.fun.quickClick.delay / 2, e = b;
+	else e = Global::qi.fun.quickClick.delay;
 
-	while (qis.state)
+	while (Global::qi.state)
 	{
-		Input::State(qis.fun.quickClick.key, 1, 214);
+		Input::State(Global::qi.fun.quickClick.key, 1, 214);
 		Thread::Sleep(b);
-		Input::State(qis.fun.quickClick.key, 0, 214);
+		Input::State(Global::qi.fun.quickClick.key, 0, 214);
 		Thread::Sleep(e);
 	}
 	return 0;
@@ -249,25 +216,25 @@ DWORD CALLBACK ThreadMacro(LPVOID lParam)
 {
 	srand(clock());
 	uint32 pos = (UINT)lParam;
-	uint32 count = qis.scripts[pos].a;
+	uint32 count = Global::qi.scripts[pos].a;
 	uint32 n = 0;
-	while (qis.state)
+	while (Global::qi.state)
 	{
 		if (count)
 		{
 			n++;
 			if (n > count) break;
 		}
-		for (uint32 n = 0; n < qis.scripts[pos].items.len() && qis.state; n++)
+		for (uint32 n = 0; n < Global::qi.scripts[pos].items.len() && Global::qi.state; n++)
 		{
-			if (ExcItem(&qis.scripts[pos].items[n]))
+			if (ExcItem(Global::qi.scripts[pos].items[n]))
 			{
-				qis.scripts[pos].thread = 0;
+				Global::qi.scripts[pos].thread = 0;
 				return 0;
 			}
 		}
 	}
-	qis.scripts[pos].thread = 0;
+	Global::qi.scripts[pos].thread = 0;
 	return 0;
 }
 DWORD CALLBACK ThreadRelease(LPVOID key)
@@ -277,27 +244,27 @@ DWORD CALLBACK ThreadRelease(LPVOID key)
 }
 DWORD CALLBACK ThreadWndActive(LPVOID lParam)
 {
-	while (qis.state)
+	while (Global::qi.state)
 	{
-		qis.fun.wndActive.wnd = FindWindowW(0, qis.fun.wndActive.name.c_str());
-		if (qis.fun.wndActive.wnd)
+		Global::qi.fun.wndActive.wnd = FindWindowW(0, Global::qi.fun.wndActive.name.c_str());
+		if (Global::qi.fun.wndActive.wnd)
 		{
-			bool active = (GetForegroundWindow() == qis.fun.wndActive.wnd);
-			if (!qis.fun.wndActive.active && active)
+			bool active = (GetForegroundWindow() == Global::qi.fun.wndActive.wnd);
+			if (!Global::qi.fun.wndActive.active && active)
 			{
-				qis.fun.wndActive.active = 1;
+				Global::qi.fun.wndActive.active = 1;
 
-				if (qis.set.showTips)
+				if (Global::qi.set.showTips)
 				{
 					TipsWindow::Popup(L"已启用 - 窗口内", RGB(0xA0, 0xFF, 0xC0));
 				}
 
 			}
-			else if (qis.fun.wndActive.active && !active)
+			else if (Global::qi.fun.wndActive.active && !active)
 			{
-				qis.fun.wndActive.active = 0;
+				Global::qi.fun.wndActive.active = 0;
 
-				if (qis.set.showTips)
+				if (Global::qi.set.showTips)
 				{
 					TipsWindow::Popup(L"已禁用 - 窗口外", RGB(0xFF, 0x80, 0x80));
 				}
@@ -305,7 +272,7 @@ DWORD CALLBACK ThreadWndActive(LPVOID lParam)
 		}
 		sleep(100);
 	}
-	qis.fun.wndActive.thread = 0;
+	Global::qi.fun.wndActive.thread = 0;
 	return 0;
 }
 
@@ -313,33 +280,33 @@ byte block = 0;
 
 void SwitchKey(BYTE vk, bool state)
 {
-	if ((qis.set.key & 0xFFFF) == vk) qis.set.k1 = state;
-	if (!(qis.set.key >> 16)) qis.set.k2 = 1;
-	else if ((qis.set.key >> 16) == vk) qis.set.k2 = state;
+	if ((Global::qi.set.key & 0xFFFF) == vk) Global::qi.set.k1 = state;
+	if (!(Global::qi.set.key >> 16)) Global::qi.set.k2 = 1;
+	else if ((Global::qi.set.key >> 16) == vk) Global::qi.set.k2 = state;
 
-	if (qis.set.k1 && qis.set.k2)
+	if (Global::qi.set.k1 && Global::qi.set.k2)
 	{
-		if (qis.state)
+		if (Global::qi.state)
 		{
-			qis.state = 0;
+			Global::qi.state = 0;
 			TipsWindow::Popup(UI::qiOff, RGB(0xFF, 0x50, 0x50));
 
-			if (qis.set.audFx)Media::WavePlay(audfx.off);
+			if (Global::qi.set.audFx)Media::WavePlay(audfx.off);
 		}
 		else
 		{
-			qis.state = 1;
-			qis.screen = System::screenSize();
-			TipsWindow::screen = qis.screen;
+			Global::qi.state = 1;
+			Global::qi.screen = System::screenSize();
+			TipsWindow::screen = Global::qi.screen;
 
-			if (qis.fun.wndActive.state) qis.fun.wndActive.thread = Thread::Start(ThreadWndActive);
-			else qis.fun.wndActive.active = 1;
+			if (Global::qi.fun.wndActive.state) Global::qi.fun.wndActive.thread = Thread::Start(ThreadWndActive);
+			else Global::qi.fun.wndActive.active = 1;
 
 			TipsWindow::Popup(UI::qiOn);
 
-			if (qis.set.audFx)Media::WavePlay(audfx.on);
+			if (Global::qi.set.audFx)Media::WavePlay(audfx.on);
 		}
-		qis.set.k1 = 0, qis.set.k2 = 0;
+		Global::qi.set.k1 = 0, Global::qi.set.k2 = 0;
 	}
 }
 
@@ -347,33 +314,33 @@ void TriggerKey(BYTE vk, bool state)
 {
 	std::wstring text;
 
-	if (qis.fun.showClock.state && qis.fun.showClock.key == vk)
+	if (Global::qi.fun.showClock.state && Global::qi.fun.showClock.key == vk)
 	{
 		System::TimeStruct ts = System::Time();
 		text = String::toWString(ts.hour) + L" : " + String::toWString(ts.min) + L" - " + String::toWString(ts.sec);
 		TipsWindow::Popup(text);
 	}
 
-	if (!qis.state) return;
-	if (!qis.fun.wndActive.active) return;
+	if (!Global::qi.state) return;
+	if (!Global::qi.fun.wndActive.active) return;
 
-	if (qis.fun.quickClick.state && qis.fun.quickClick.key == vk)
+	if (Global::qi.fun.quickClick.state && Global::qi.fun.quickClick.key == vk)
 	{
-		if (qis.fun.quickClick.mode)
+		if (Global::qi.fun.quickClick.mode)
 		{
 			if (!state)
 			{
-				if (!qis.fun.quickClick.thread)
+				if (!Global::qi.fun.quickClick.thread)
 				{
-					qis.fun.quickClick.thread = Thread::Start(ThreadQuickClick);
-					if (qis.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ开始");
+					Global::qi.fun.quickClick.thread = Thread::Start(ThreadQuickClick);
+					if (Global::qi.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ开始");
 				}
 				else
 				{
-					Thread::Start(ThreadRelease, (LPVOID)qis.fun.quickClick.key);
-					TerminateThread(qis.fun.quickClick.thread, 0);
-					qis.fun.quickClick.thread = 0;
-					if (qis.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ停止", RGB(0xFF, 0xAA, 0xFF));
+					Thread::Start(ThreadRelease, (LPVOID)Global::qi.fun.quickClick.key);
+					TerminateThread(Global::qi.fun.quickClick.thread, 0);
+					Global::qi.fun.quickClick.thread = 0;
+					if (Global::qi.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ停止", RGB(0xFF, 0xAA, 0xFF));
 				}
 			}
 		}
@@ -381,113 +348,113 @@ void TriggerKey(BYTE vk, bool state)
 		{
 			if (state)
 			{
-				if (!qis.fun.quickClick.thread)
+				if (!Global::qi.fun.quickClick.thread)
 				{
-					qis.fun.quickClick.thread = Thread::Start(ThreadQuickClick);
-					if (qis.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ执行中", RGB(0xFF, 0xFF, 0x60));
+					Global::qi.fun.quickClick.thread = Thread::Start(ThreadQuickClick);
+					if (Global::qi.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ执行中", RGB(0xFF, 0xFF, 0x60));
 				}
 			}
 			else
 			{
-				if (qis.fun.quickClick.thread)
+				if (Global::qi.fun.quickClick.thread)
 				{
-					Thread::Start(ThreadRelease, (LPVOID)qis.fun.quickClick.key);
-					TerminateThread(qis.fun.quickClick.thread, 0);
-					qis.fun.quickClick.thread = 0;
-					if (qis.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ停止", RGB(0xFF, 0xAA, 0xFF));
+					Thread::Start(ThreadRelease, (LPVOID)Global::qi.fun.quickClick.key);
+					TerminateThread(Global::qi.fun.quickClick.thread, 0);
+					Global::qi.fun.quickClick.thread = 0;
+					if (Global::qi.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ停止", RGB(0xFF, 0xAA, 0xFF));
 				}
 			}
 		}
 	}
 
-	for (UINT n = 0; n < qis.scripts.len(); n++)
+	for (uint32 n = 0; n < Global::qi.scripts.len(); n++)
 	{
-		if (qis.scripts[n].state)
+		if (Global::qi.scripts[n].state)
 		{
-			if ((qis.scripts[n].key & 0xFFFF) == vk) qis.scripts[n].k1 = state, qis.scripts[n].block ? block = vk : 0;
-			if ((qis.scripts[n].key >> 16) == 0) qis.scripts[n].k2 = 1;
-			else if ((qis.scripts[n].key >> 16) == vk) qis.scripts[n].k2 = state, qis.scripts[n].block ? block = vk : 0;
+			if ((Global::qi.scripts[n].key & 0xFFFF) == vk) Global::qi.scripts[n].k1 = state, Global::qi.scripts[n].block ? block = vk : 0;
+			if ((Global::qi.scripts[n].key >> 16) == 0) Global::qi.scripts[n].k2 = 1;
+			else if ((Global::qi.scripts[n].key >> 16) == vk) Global::qi.scripts[n].k2 = state, Global::qi.scripts[n].block ? block = vk : 0;
 
-			if (qis.scripts[n].mode == Script::sw)
+			if (Global::qi.scripts[n].mode == Script::sw)
 			{
-				if (qis.scripts[n].k1 && qis.scripts[n].k2)
+				if (Global::qi.scripts[n].k1 && Global::qi.scripts[n].k2)
 				{
-					if (!qis.scripts[n].thread)
+					if (!Global::qi.scripts[n].thread)
 					{
-						qis.scripts[n].thread = Thread::Start(ThreadMacro, (LPVOID)n);
-						if (qis.set.showTips)
+						Global::qi.scripts[n].thread = Thread::Start(ThreadMacro, (LPVOID)n);
+						if (Global::qi.set.showTips)
 						{
-							text = qis.scripts[n].name + L"ㅤ开始";
+							text = Global::qi.scripts[n].name + L"ㅤ开始";
 							TipsWindow::Popup(text, RGB(0xFF, 0xAA, 0xFF));
 						}
 					}
 					else
 					{
-						TerminateThread(qis.scripts[n].thread, 0);
-						qis.scripts[n].thread = 0;
-						if (qis.set.showTips)
+						TerminateThread(Global::qi.scripts[n].thread, 0);
+						Global::qi.scripts[n].thread = 0;
+						if (Global::qi.set.showTips)
 						{
-							text = qis.scripts[n].name + L"ㅤ结束";
+							text = Global::qi.scripts[n].name + L"ㅤ结束";
 							TipsWindow::Popup(text, RGB(0xFF, 0xAA, 0x00));
 						}
 					}
 				}
 			}
-			else if (qis.scripts[n].mode == Script::down)
+			else if (Global::qi.scripts[n].mode == Script::down)
 			{
-				if (qis.scripts[n].k1 && qis.scripts[n].k2)
+				if (Global::qi.scripts[n].k1 && Global::qi.scripts[n].k2)
 				{
-					if (!qis.scripts[n].thread)
+					if (!Global::qi.scripts[n].thread)
 					{
-						qis.scripts[n].thread = Thread::Start(ThreadMacro, (LPVOID)n);
-						if (qis.set.showTips)
+						Global::qi.scripts[n].thread = Thread::Start(ThreadMacro, (LPVOID)n);
+						if (Global::qi.set.showTips)
 						{
-							if (qis.scripts[n].a) text = qis.scripts[n].name + L"ㅤ" + String::toWString(qis.scripts[n].a) + L"次";
-							else text = qis.scripts[n].name + L"ㅤ循环";
-							TipsWindow::Popup(text, RGB(0x40, 0x60, 0xFF));
+							if (Global::qi.scripts[n].a) text = Global::qi.scripts[n].name + L"ㅤ" + String::toWString(Global::qi.scripts[n].a) + L"次";
+							else text = Global::qi.scripts[n].name + L"ㅤ循环";
+							TipsWindow::Popup(text, RGB(0x60, 0x80, 0xFF));
 						}
 					}
 				}
 				else
 				{
-					if (qis.scripts[n].thread && qis.scripts[n].a == 0)
+					if (Global::qi.scripts[n].thread && Global::qi.scripts[n].a == 0)
 					{
-						TerminateThread(qis.scripts[n].thread, 0);
-						qis.scripts[n].thread = 0;
-						if (qis.set.showTips)
+						TerminateThread(Global::qi.scripts[n].thread, 0);
+						Global::qi.scripts[n].thread = 0;
+						if (Global::qi.set.showTips)
 						{
-							text = qis.scripts[n].name + L"ㅤ结束";
+							text = Global::qi.scripts[n].name + L"ㅤ结束";
 							TipsWindow::Popup(text, RGB(0xFF, 0xAA, 0x00));
 						}
 					}
 				}
 			}
-			else if (qis.scripts[n].mode == Script::up)
+			else if (Global::qi.scripts[n].mode == Script::up)
 			{
-				if (qis.scripts[n].k1 && qis.scripts[n].k2)
+				if (Global::qi.scripts[n].k1 && Global::qi.scripts[n].k2)
 				{
-					qis.scripts[n].active = 1;
-					if (qis.scripts[n].thread && qis.scripts[n].a == 0)
+					Global::qi.scripts[n].active = 1;
+					if (Global::qi.scripts[n].thread && Global::qi.scripts[n].a == 0)
 					{
-						TerminateThread(qis.scripts[n].thread, 0);
-						qis.scripts[n].thread = 0;
-						if (qis.set.showTips)
+						TerminateThread(Global::qi.scripts[n].thread, 0);
+						Global::qi.scripts[n].thread = 0;
+						if (Global::qi.set.showTips)
 						{
-							text = qis.scripts[n].name + L"ㅤ结束";
+							text = Global::qi.scripts[n].name + L"ㅤ结束";
 							TipsWindow::Popup(text, RGB(0xFF, 0xAA, 0x00));
 						}
 					}
 				}
-				else if (qis.scripts[n].active)
+				else if (Global::qi.scripts[n].active)
 				{
-					qis.scripts[n].active = 0;
-					if (!qis.scripts[n].thread)
+					Global::qi.scripts[n].active = 0;
+					if (!Global::qi.scripts[n].thread)
 					{
-						qis.scripts[n].thread = Thread::Start(ThreadMacro, (LPVOID)n);
-						if (qis.set.showTips)
+						Global::qi.scripts[n].thread = Thread::Start(ThreadMacro, (LPVOID)n);
+						if (Global::qi.set.showTips)
 						{
-							if (qis.scripts[n].a) text = qis.scripts[n].name + L"ㅤ" + String::toWString(qis.scripts[n].a) + L"次";
-							else text = qis.scripts[n].name + L"ㅤ循环";
+							if (Global::qi.scripts[n].a) text = Global::qi.scripts[n].name + L"ㅤ" + String::toWString(Global::qi.scripts[n].a) + L"次";
+							else text = Global::qi.scripts[n].name + L"ㅤ循环";
 							TipsWindow::Popup(text, RGB(0x40, 0xFF, 0x60));
 						}
 					}
@@ -510,9 +477,9 @@ InputHookProc()
 		
 		if (state)
 		{
-			if (qis.rec)
+			if (Global::qi.rec)
 			{
-				if (((RecordUi*)qis.rec)->State()) ((RecordUi*)qis.rec)->AddItems(Item::down, Input::Convert(vk), msPt);
+				if (((RecordUi*)Global::qi.rec)->State()) ((RecordUi*)Global::qi.rec)->AddItems(Input::Convert(vk), state);
 			}
 			else
 			{
@@ -522,10 +489,10 @@ InputHookProc()
 		}
 		else
 		{
-			if (qis.rec)
+			if (Global::qi.rec)
 			{
-				if (((RecordUi*)qis.rec)->State()) ((RecordUi*)qis.rec)->AddItems(Item::up, Input::Convert(vk), msPt);
-				if (qis.set.recKey == Input::Convert(vk)) ((RecordUi*)qis.rec)->EndRec();
+				if (((RecordUi*)Global::qi.rec)->State()) ((RecordUi*)Global::qi.rec)->AddItems(Input::Convert(vk), state);
+				if (Global::qi.set.recKey == Input::Convert(vk)) ((RecordUi*)Global::qi.rec)->EndRec();
 			}
 			else
 			{
@@ -559,28 +526,27 @@ int main(int argc, char* argv[])
 
 	timeBeginPeriod(1);
 
-	qis.hdc = GetDC(0);
-	qis.Ptrs(SetHookState);
-	qis.screen = System::screenSize();
-	TipsWindow::screen = qis.screen;
-	LoadJson(&qis);
-
-	InitUI(!qis.set.wndZoom);
+	Global::qi.Ptrs(SetHookState);
+	Global::qi.screen = System::screenSize();
+	TipsWindow::screen = Global::qi.screen;
+	
+	LoadJson();
+	InitUI(!Global::qi.set.wndZoom);
 
 	QApplication app(argc, argv);
-	MainUi wnd(0, &qis);
+	MainUi wnd;
 
-	if (!qis.set.minMode)
+	if (!Global::qi.set.minMode)
 	{
 		wnd.show();
-		qis.HookState(0);
-		qis.state = 0;
+		Global::qi.HookState(0);
+		Global::qi.state = 0;
 	}
 	else
 	{
 		wnd.hide();
-		qis.HookState(1);
-		qis.state = 0;
+		Global::qi.HookState(1);
+		Global::qi.state = 0;
 	}
 
 	app.exec();

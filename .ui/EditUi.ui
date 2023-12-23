@@ -1520,8 +1520,8 @@ QPushButton:hover{background-color: #C0E2F2;}</string>
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>356</width>
-             <height>628</height>
+             <width>266</width>
+             <height>626</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="box2Box">
@@ -1789,6 +1789,52 @@ QRadioButton::indicator {background-color:#FFF;width:20px;height:20px}QRadioButt
                    </size>
                   </property>
                  </spacer>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="chbColorMove">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <family>Microsoft YaHei</family>
+                    <pointsize>-1</pointsize>
+                    <weight>75</weight>
+                    <bold>true</bold>
+                   </font>
+                  </property>
+                  <property name="focusPolicy">
+                   <enum>Qt::ClickFocus</enum>
+                  </property>
+                  <property name="toolTip">
+                   <string/>
+                  </property>
+                  <property name="layoutDirection">
+                   <enum>Qt::RightToLeft</enum>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">*{font-family:&quot;Microsoft YaHei&quot;;font-size:12px;}
+QCheckBox::indicator {background-color:#FFF;width:20px;height:20px;}QCheckBox::indicator:checked {background-color:#888;}</string>
+                  </property>
+                  <property name="text">
+                   <string>找到并移动到</string>
+                  </property>
+                  <property name="checkable">
+                   <bool>true</bool>
+                  </property>
+                  <property name="autoRepeat">
+                   <bool>false</bool>
+                  </property>
+                  <property name="autoExclusive">
+                   <bool>false</bool>
+                  </property>
+                  <property name="tristate">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
                 </item>
                </layout>
               </item>

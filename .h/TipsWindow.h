@@ -1,5 +1,5 @@
 #pragma once
-#include "QuickInputDef.h"
+#include "../static.h"
 
 struct TipsWindow
 {

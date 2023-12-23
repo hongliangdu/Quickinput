@@ -18,6 +18,19 @@ typedef unsigned __int32 uint32;
 typedef signed __int64 int64;
 typedef unsigned __int64 uint64;
 
+#define int8Max ((int8)0x7F)
+#define int8Min ((int8)0x80)
+#define uint8Max ((uint8)0xFF)
+#define int16Max ((int16)0x7FFF)
+#define int16Min ((int16)0x8000)
+#define uint16Max ((uint16)0xFFFF)
+#define int32Max ((int32)0x7FFFFFFF)
+#define int32Min ((int32)0x80000000)
+#define uint32Max ((uint32)0xFFFFFFFF)
+#define int64Max ((int64)0x7FFFFFFFFFFFFFFF)
+#define int64Min ((int64)0x8000000000000000)
+#define uint64Max ((uint64)0xFFFFFFFFFFFFFFFF)
+
 template<typename T>
 struct TPOINT {
 	T x;

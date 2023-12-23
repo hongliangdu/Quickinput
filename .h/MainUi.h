@@ -1,23 +1,20 @@
 ﻿#pragma once
-#pragma execution_character_set("utf-8")
 #include <qsystemtrayicon.h>
 #include "MacroUi.h"
 #include "TriggerUi.h"
 #include "FuncUi.h"
 #include "SettingsUi.h"
 #include "AboutUi.h"
-#include "QuickInputDef.h"
 #include "ui_MainUi.h"
+#include "../static.h"
 
 class MainUi : public QMainWindow
 {
 	Q_OBJECT
 
 public:
-
-	MainUi(QWidget* parent = 0, QuickInputStruct* qis = 0) : QMainWindow(parent)
+	MainUi() : QMainWindow()
 	{
-		this->qis = qis;
 		ui.setupUi(this);
 		setWindowFlags(Qt::FramelessWindowHint);
 		setAttribute(Qt::WA_TranslucentBackground);
@@ -27,10 +24,10 @@ public:
 			tray->setIcon(QIcon(":/icon.png"));
 			tray->show();
 
-			wm = new MacroUi(this, qis);
-			wt = new TriggerUi(this, qis);
-			wf = new FuncUi(this, qis);
-			ws = new SettingsUi(this, qis);
+			wm = new MacroUi(this);
+			wt = new TriggerUi(this);
+			wf = new FuncUi(this);
+			ws = new SettingsUi(this);
 			wa = new AboutUi(this);
 			wm->move(1, 71);
 			wt->move(1, 71);
@@ -65,7 +62,6 @@ private:
 	QWidget* ws = 0;
 	QWidget* wa = 0;
 
-	QuickInputStruct* qis = 0;
 	QString styleOn = R"(QPushButton{background-color:#CEF;border:none;font-family:"Microsoft YaHei";font-size:18px;})";
 	QString styleOff = R"(QPushButton{background-color:#ADE;border:none;font-family:"Microsoft YaHei";font-size:18px;}QPushButton:hover{background-color: #C0E2F2;})";
 
@@ -112,13 +108,13 @@ private:
 		{
 			if (windowState() == Qt::WindowNoState)
 			{
-				qis->state = 0;
-				qis->HookState(0);
+				Global::qi.state = 0;
+				Global::qi.HookState(0);
 			}
 			else if (windowState() == Qt::WindowMinimized)
 			{
-				qis->HookState(1);
-				if (change && qis->set.minMode) hide();
+				Global::qi.HookState(1);
+				if (change && Global::qi.set.minMode) hide();
 			}
 		}
 	}
@@ -138,8 +134,8 @@ private slots:
 	{
 		if (reason == QSystemTrayIcon::Trigger)
 		{
-			qis->state = 0;
-			qis->HookState(0);
+			Global::qi.state = 0;
+			Global::qi.HookState(0);
 			setWindowState(Qt::WindowNoState);
 			show();
 		}

@@ -6,6 +6,10 @@
 #define VK_WHEELDOWN 0x0B
 #define InputHookProc() InputHook::Param InputHook::p; bool InputHook::InputProc(BYTE vk, bool state, POINT msPt, PULONG_PTR exInfo)
 
+#ifndef sleep
+#define sleep(ms) Sleep(ms)
+#endif
+
 class InputHook
 {
 public:
@@ -154,9 +158,9 @@ private:
 			switch (msg)
 			{
 			case WM_KEYDOWN:
-				if (p.keys[kb->vkCode]) break;
+				if (p.blockRep && p.keys[kb->vkCode]) break;
 				if (InputProc((BYTE)kb->vkCode, 1, { 0 }, &kb->dwExtraInfo)) return 1;
-				p.keys[kb->vkCode] = 1;
+				if (p.blockRep) p.keys[kb->vkCode] = 1;
 				break;
 			case WM_KEYUP:
 				if (InputProc((BYTE)kb->vkCode, 0, { 0 }, &kb->dwExtraInfo)) return 1;
@@ -169,7 +173,7 @@ private:
 				break;
 			case WM_SYSKEYUP:
 				if (InputProc((BYTE)kb->vkCode, 0, { 0 }, &kb->dwExtraInfo)) return 1;
-				p.keys[kb->vkCode] = 0;
+				if (p.blockRep) p.keys[kb->vkCode] = 1;
 				break;
 			}
 		}

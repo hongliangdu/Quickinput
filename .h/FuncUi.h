@@ -1,8 +1,7 @@
 ﻿#pragma once
-#pragma execution_character_set("utf-8")
 #include <qvalidator.h>
 #include "ui_FuncUi.h"
-#include "QuickInputDef.h"
+#include "../static.h"
 
 class FuncUi : public QWidget
 {
@@ -10,44 +9,42 @@ class FuncUi : public QWidget
 
 public:
 
-	FuncUi(QWidget* parent = 0, QuickInputStruct* qis = 0) : QWidget(parent)
+	FuncUi(QWidget* parent) : QWidget(parent)
 	{
-		this->qis = qis;
-
 		ui.setupUi(this);
 		setWindowFlags(Qt::FramelessWindowHint);
 
-		ControlInit();
-		ControlEvent();
+		WidInit();
+		WidEvent();
 	}
 
 private:
 
 	Ui::FuncUiClass ui;
-	QuickInputStruct* qis;
+	FuncData* func = &Global::qi.fun;
 
-	void ControlInit()
+	void WidInit()
 	{
-		ui.chbQkClick->setChecked(qis->fun.quickClick.state);
-		ui.chbClock->setChecked(qis->fun.showClock.state);
-		ui.chbWndActive->setChecked(qis->fun.wndActive.state);
+		ui.chbQkClick->setChecked(func->quickClick.state);
+		ui.chbClock->setChecked(func->showClock.state);
+		ui.chbWndActive->setChecked(func->wndActive.state);
 
-		ui.etQkDelay->setText(QString::number(qis->fun.quickClick.delay));
-		ui.etQkDelay->setValidator(new QIntValidator(0, 100000, this));
-		ui.etWndActive->setText(QString::fromWCharArray(qis->fun.wndActive.name.c_str()));
+		ui.etQkDelay->setText(QString::number(func->quickClick.delay));
+		ui.etQkDelay->setValidator(new QIntValidator(0, 99999, this));
+		ui.etWndActive->setText(QString::fromWCharArray(func->wndActive.name.c_str()));
 
 		ui.hkQkClick->Mode(0);
-		ui.hkQkClick->VirtualKey(qis->fun.quickClick.key);
+		ui.hkQkClick->VirtualKey(func->quickClick.key);
 		ui.hkClock->Mode(0);
-		ui.hkClock->VirtualKey(qis->fun.showClock.key);
+		ui.hkClock->VirtualKey(func->showClock.key);
 
-		ui.cmbMode->addItem("按下");
-		ui.cmbMode->addItem("切换");
-		ui.cmbMode->setCurrentIndex(qis->fun.quickClick.mode);
+		ui.cmbMode->addItem(u8"按下");
+		ui.cmbMode->addItem(u8"切换");
+		ui.cmbMode->setCurrentIndex(func->quickClick.mode);
 
 	}
 
-	void ControlEvent()
+	void WidEvent()
 	{
 		connect(ui.hkQkClick, SIGNAL(changed()), this, SLOT(OnQkClickKey()));
 		connect(ui.etQkDelay, SIGNAL(textEdited(const QString&)), this, SLOT(OnQkDelay(const QString&)));
@@ -63,44 +60,44 @@ private slots:
 
 	void OnQkClickKey()
 	{
-		qis->fun.quickClick.key = ui.hkQkClick->virtualKey();
-		SaveJson(qis);
+		func->quickClick.key = ui.hkQkClick->virtualKey();
+		SaveJson();
 	}
 
 	void OnQkDelay(const QString& text)
 	{
-		qis->fun.quickClick.delay = text.toInt();
-		SaveJson(qis);
+		func->quickClick.delay = text.toInt();
+		SaveJson();
 	}
 
 	void OnShowClock()
 	{
-		qis->fun.showClock.key = ui.hkClock->virtualKey();
-		SaveJson(qis);
+		func->showClock.key = ui.hkClock->virtualKey();
+		SaveJson();
 	}
 
 	void OnQkClick(int state)
 	{
-		qis->fun.quickClick.state = state;
-		SaveJson(qis);
+		func->quickClick.state = state;
+		SaveJson();
 	}
 
 	void OnClock(int state)
 	{
-		qis->fun.showClock.state = state;
-		SaveJson(qis);
+		func->showClock.state = state;
+		SaveJson();
 	}
 
 	void OnCmbMode(int row)
 	{
-		qis->fun.quickClick.mode = row;
-		SaveJson(qis);
+		func->quickClick.mode = row;
+		SaveJson();
 	}
 
 	void OnWndActive(int state)
 	{
-		qis->fun.wndActive.state = state;
-		SaveJson(qis);
+		func->wndActive.state = state;
+		SaveJson();
 	}
 
 	void OnBnWndActive()
@@ -112,15 +109,15 @@ private slots:
 		WCHAR name[MAX_PATH];
 		while (!Input::state(VK_RETURN))
 		{
-			qis->fun.wndActive.wnd = GetForegroundWindow();
-			GetWindowTextW(qis->fun.wndActive.wnd, name, MAX_PATH);
+			func->wndActive.wnd = GetForegroundWindow();
+			GetWindowTextW(func->wndActive.wnd, name, MAX_PATH);
 			TipsWindow::Show(name, RGB(0xCC, 0xEE, 0xFF));
 			sleep(50);
 		}
 		TipsWindow::Popup(name, RGB(0x20, 0xFF, 0x20));
-		qis->fun.wndActive.name = name;
-		ui.etWndActive->setText(QString::fromWCharArray(qis->fun.wndActive.name.c_str()));
+		func->wndActive.name = name;
+		ui.etWndActive->setText(QString::fromWCharArray(func->wndActive.name.c_str()));
 
-		SaveJson(qis);
+		SaveJson();
 	}
 };

@@ -1,25 +1,17 @@
 ﻿#pragma once
-#pragma execution_character_set("utf-8")
-
 #include <qevent.h>
 #include "ui_RecordUi.h"
-#include "QuickInputDef.h"
+#include "../static.h"
 
 class RecordUi : public QDialog
 {
 	Q_OBJECT
 
 public:
-
-	RecordUi(QWidget* main = 0, QuickInputStruct* qis = 0, List<Item>* items = 0) : QDialog(main)
+	RecordUi(QWidget* main, List<QiItem>& items) : QDialog(main)
 	{
 		this->main = main;
-		this->qis = qis;
-		this->items = items;
-		SIZE scr = System::screenSize();
-
-		screen.setX(scr.cx);
-		screen.setY(scr.cy);
+		this->items = &items;
 		ui.setupUi(this);
 		setParent(0);
 		setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
@@ -28,13 +20,11 @@ public:
 		ui.bnStart->setText(UI::rcStart);
 		ui.bnClose->setText(UI::rcClose);
 
-		ControlEvent();
+		WidEvent();
 	}
 
-	void AddItems(BYTE type, BYTE vk, POINT pos)
+	void AddItems(byte vk, bool state, POINT pt = { 0 })
 	{
-		Item item;
-
 		if (!begin)
 		{
 			tim = clock();
@@ -42,24 +32,24 @@ public:
 		}
 
 		// delay
-		item.type = 0;
-		item.b = clock() - tim;
-		items[0].Add(item);
+		items->Add(QiItem(QiAction::delay));
+		QiDelayPtr(items->Get())->ms = clock() - tim;
 		tim = clock();
 
 		// pos
 		if (Input::Type(vk))
 		{
-			POINT abs = RelToAbs(pos);
-			item.type = 4;
-			item.b = abs.x;
-			item.c = abs.y;
-			items[0].Add(item);
+			items->Add(QiItem(QiAction::mouse));
+			POINT abs = RelToAbs(pt);
+			QiMousePtr(items->Get())->x = abs.x;
+			QiMousePtr(items->Get())->y = abs.y;
 		}
+
 		// key
-		item.type = type;
-		item.a = vk;
-		items[0].Add(item);
+		items->Add(QiItem(QiAction::key));
+		QiKeyPtr(QiItem(QiAction::key))->vk = vk;
+		if (state) QiKeyPtr(QiItem(QiAction::key))->state= QiKey::down;
+		else QiKeyPtr(QiItem(QiAction::key))->state= QiKey::up;
 	}
 
 	bool State() { return start; }
@@ -68,27 +58,24 @@ public:
 	{
 		if (start)
 		{
-			items[0].Add();
-			items[0].Add();
+			items->Add();
+			items->Add();
 		}
 		else
 		{
-			items[0].Emp();
+			items->Emp();
 		}
 		OnBnStart();
 	}
 
 private:
-
 	Ui::RecordUiClass ui;
-	QWidget* main;
-	QPoint screen;
-	QuickInputStruct* qis;
-	List<Item>* items;
+	QWidget* main = 0;
+	List<QiItem>* items = 0;
 	long long tim = 0;
 	bool start = 0, begin = 0;
 
-	void ControlEvent()
+	void WidEvent()
 	{
 		connect(ui.bnStart, SIGNAL(clicked()), this, SLOT(OnBnStart()));
 		connect(ui.bnClose, SIGNAL(clicked()), this, SLOT(OnBnClose()));
@@ -100,38 +87,37 @@ private:
 	}
 
 public slots:
-
 	void OnBnStart()
 	{
 		if (start)
 		{
-			qis->rec = 0;
-			items[0].Del(items[0].len() - 1);
-			items[0].Del(items[0].len() - 1);
-			items[0].Del(items[0].len() - 1);
-			items[0].Del(items[0].len() - 1);
-			items[0].Del(items[0].len() - 1);
-			items[0].Del(items[0].len() - 1);
+			Global::qi.rec = 0;
+			items->Del();
+			items->Del();
+			items->Del();
+			items->Del();
+			items->Del();
+			items->Del();
 
-			qis->scripts[qis->scripts.len() - 1].name = NameFilter(qis, L"录制");
-			SaveScript(qis->scripts[qis->scripts.len() - 1]);
+			Global::qi.scripts.Get().name = NameFilter(L"录制");
+			SaveScript(Global::qi.scripts.Get());
 			close();
 		}
 		else
 		{
 			TipsWindow::Hide();
-			items[0].Emp();
+			items->Emp();
 			ui.bnStart->setText(UI::rcStop);
 			start = 1;
-			qis->rec = this;
+			Global::qi.rec = this;
 		}
 	}
 
 	void OnBnClose()
 	{
 		TipsWindow::Hide();
-		qis->rec = 0;
-		qis->scripts.Del(qis->scripts.len() - 1);
+		Global::qi.rec = 0;
+		Global::qi.scripts.Del();
 		main->show();
 		close();
 	}

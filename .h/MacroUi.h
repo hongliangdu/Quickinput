@@ -1,29 +1,26 @@
 ﻿#pragma once
-#pragma execution_character_set("utf-8")
 #include <qfiledialog.h>
 #include <qtimer.h>
-#include "ui_MacroUi.h"
 #include "RecordUi.h"
 #include "EditUi.h"
-#include "QuickInputDef.h"
+#include "ui_MacroUi.h"
+#include "../static.h"
 
 class MacroUi : public QWidget
 {
 	Q_OBJECT
 
 public:
+	MacroUi() {}
 
-	MacroUi(QWidget* parent = 0, QuickInputStruct* qis = 0) : QWidget(parent)
+	MacroUi(QWidget* parent) : QWidget(parent)
 	{
-		this->qis = qis;
 		this->main = parent;
-		this->scripts = &qis->scripts;
-
 		ui.setupUi(this);
 		setWindowFlags(Qt::FramelessWindowHint);
 
-		ControlInit();
-		ControlEvent();
+		WidInit();
+		WidEvent();
 		LockControl(1);
 		TbUpdate();
 	}
@@ -31,12 +28,11 @@ public:
 private:
 
 	Ui::MacroUiClass ui;
-	QWidget* main;
-	QuickInputStruct* qis;
-	List<Script>* scripts;
+	QWidget* main = 0;
+	List<Script>& scripts = Global::qi.scripts;
 	QTimer* timer;
 
-	void ControlInit()
+	void WidInit()
 	{
 		timer = new QTimer(this);
 
@@ -49,7 +45,7 @@ private:
 		}
 	}
 
-	void ControlEvent()
+	void WidEvent()
 	{
 		connect(timer, SIGNAL(timeout()), this, SLOT(OnTimeOut()));
 		connect(ui.tbItem, SIGNAL(cellClicked(int, int)), this, SLOT(OnTbClicked(int, int)));
@@ -79,13 +75,13 @@ private:
 	void TbUpdate()
 	{
 		ui.tbItem->clearMask();
-		ui.tbItem->setRowCount(scripts[0].len());
+		ui.tbItem->setRowCount(scripts.len());
 		ui.tbItem->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::Fixed);
 		ui.tbItem->verticalHeader()->setDefaultAlignment(Qt::AlignCenter);
 		ui.tbItem->verticalHeader()->setDefaultSectionSize(0);
 
-		for (uint32 u = 0; u < qis->scripts.len(); u++) {
-			ui.tbItem->setItem(u, 0, new QTableWidgetItem(QString::fromWCharArray(scripts[0][u].name.c_str())));
+		for (uint32 u = 0; u < scripts.len(); u++) {
+			ui.tbItem->setItem(u, 0, new QTableWidgetItem(QString::fromWCharArray(scripts[u].name.c_str())));
 			ui.tbItem->item(u, 0)->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 		}
 	}
@@ -105,7 +101,7 @@ private slots:
 		if (pos < 0) return;
 		timer->stop();
 		ui.etName->setDisabled(0);
-		ui.etName->setText(QString::fromWCharArray(qis->scripts[pos].name.c_str()));
+		ui.etName->setText(QString::fromWCharArray(scripts[pos].name.c_str()));
 	}
 
 	void OnTbClicked(int row, int column)
@@ -113,7 +109,7 @@ private slots:
 		LockControl(1);
 		if (row < 0) return;
 
-		ui.etName->setText(QString::fromWCharArray(qis->scripts[row].name.c_str()));
+		ui.etName->setText(QString::fromWCharArray(scripts[row].name.c_str()));
 
 		LockControl(0);
 	}
@@ -147,14 +143,14 @@ private slots:
 			return;
 		}
 
-		path = L"json\\" + qis->scripts[pos].name + L".json";
+		path = L"json\\" + scripts[pos].name + L".json";
 		File::FileDelete(path.c_str());
 
-		qis->scripts[pos].name = (LPCWSTR)ui.etName->text().utf16();
-		ui.etName->setText(QString::fromWCharArray(qis->scripts[pos].name.c_str()));
+		scripts[pos].name = (LPCWSTR)ui.etName->text().utf16();
+		ui.etName->setText(QString::fromWCharArray(scripts[pos].name.c_str()));
 
-		SaveScript(qis->scripts[pos]);
-		LoadJson(qis);
+		SaveScript(scripts[pos]);
+		LoadJson();
 		TbUpdate();
 		ResetControl();
 		LockControl(1);
@@ -162,27 +158,26 @@ private slots:
 
 	void OnBnRec()
 	{
-		qis->scripts.Add();
-		RecordUi rw(main, qis, &qis->scripts[qis->scripts.len() - 1].items);
+		scripts.Add();
+		RecordUi rw(main, scripts.Get().items);
 		main->hide();
-		qis->HookState(1);
-		qis->state = 0;
-		qis->rec = &rw;
+		Global::qi.HookState(1);
+		Global::qi.state = 0;
+		Global::qi.rec = &rw;
 
 		std::wstring text = L"按下";
 		QKeyEdit ke;
 		ke.Mode(2);
-		ke.VirtualKey(qis->set.recKey & 0xFFFF, qis->set.recKey >> 16);
+		ke.VirtualKey(Global::qi.set.recKey & 0xFFFF, Global::qi.set.recKey >> 16);
 		text += ke.Name().toStdWString();
 		text += L"开始/停止录制";
 		TipsWindow::Show(text, RGB(0x20, 0xFF, 0x20));
 
 		rw.exec();
-
 		main->show();
-		qis->HookState(0);
+		Global::qi.HookState(0);
 
-		LoadJson(qis);
+		LoadJson();
 		TbUpdate();
 		ResetControl();
 		LockControl(1);
@@ -190,12 +185,12 @@ private slots:
 
 	void OnBnAdd()
 	{
-		qis->scripts.Add();
-		qis->scripts[qis->scripts.len() - 1].name = NameFilter(qis, L"宏");
-		qis->scripts[qis->scripts.len() - 1].mode = 0;
+		scripts.Add();
+		scripts.Get().name = NameFilter(L"宏");
+		scripts.Get().mode = 0;
 
-		SaveScript(qis->scripts[qis->scripts.len() - 1]);
-		LoadJson(qis);
+		SaveScript(scripts.Get());
+		LoadJson();
 		TbUpdate();
 		ResetControl();
 		LockControl(1);
@@ -206,12 +201,12 @@ private slots:
 		int pos = ui.tbItem->currentRow();
 		if (pos < 0) return;
 
-		EditUi edit(qis, &qis->scripts[pos].items);
-		edit.setWindowTitle("编辑 - " + QString::fromWCharArray(qis->scripts[pos].name.c_str()));
+		EditUi edit(scripts[pos].items);
+		edit.setWindowTitle(u8"编辑 - " + QString::fromWCharArray(scripts[pos].name.c_str()));
 		edit.exec();
 
-		SaveScript(qis->scripts[pos]);
-		LoadJson(qis);
+		SaveScript(scripts[pos]);
+		LoadJson();
 		TbUpdate();
 		ResetControl();
 		LockControl(1);
@@ -222,15 +217,15 @@ private slots:
 		int pos = ui.tbItem->currentRow();
 		if (pos < 0) return;
 
-		QString path = QDir::toNativeSeparators(QFileDialog::getSaveFileName(this, u8"导出到", QString::fromWCharArray((qis->scripts[pos].name + L".json").c_str()), u8"Quick input macro (*.json)"));
+		QString path = QDir::toNativeSeparators(QFileDialog::getSaveFileName(this, u8"导出到", QString::fromWCharArray((scripts[pos].name + L".json").c_str()), u8"Quick input macro (*.json)"));
 		if (path == "") return;
 
-		std::wstring srcFile = L"json\\" + qis->scripts[pos].name + L".json";
+		std::wstring srcFile = L"macro\\" + scripts[pos].name + L".json";
 		std::wstring newFile = path.toStdWString();
 
 		CopyFileW(srcFile.c_str(), newFile.c_str(), 0);
 
-		LoadJson(qis);
+		LoadJson();
 		TbUpdate();
 		ResetControl();
 		LockControl(1);
@@ -242,8 +237,9 @@ private slots:
 		if (path == "") return;
 
 		std::wstring srcFile = path.toStdWString();
-		std::wstring newFile = L"json\\" + File::FileName(srcFile);
+		std::wstring newFile = L"macro\\" + File::FileName(srcFile);
 
+		File::FolderCreate(L"macro");
 		if (File::FileState(newFile))
 		{
 			if (MsgBox::Warning(L"文件已存在，是否覆盖？", L"Warning", MB_YESNO | MB_ICONWARNING | MB_TOPMOST) == IDYES)
@@ -253,7 +249,7 @@ private slots:
 		}
 		else CopyFileW(srcFile.c_str(), newFile.c_str(), 0);
 
-		LoadJson(qis);
+		LoadJson();
 		TbUpdate();
 		ResetControl();
 		LockControl(1);
@@ -264,13 +260,13 @@ private slots:
 		int pos = ui.tbItem->currentRow();
 		if (pos < 0) return;
 
-		std::wstring name = L"json\\" + qis->scripts[pos].name + L".json";
-		qis->scripts.Del(pos);
+		std::wstring name = L"macro\\" + scripts[pos].name + L".json";
+		scripts.Del(pos);
 
 		File::FileDelete(name.c_str());
 		ui.tbItem->setCurrentItem(0);
 
-		LoadJson(qis);
+		LoadJson();
 		TbUpdate();
 		ResetControl();
 		LockControl(1);

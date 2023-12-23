@@ -1,13 +1,11 @@
 #pragma once
-
 #include <windows.h>
-#include <qapplication.h>
-#include <qdesktopwidget.h>
 #include <QtWidgets/qdialog.h>
 #include <qlabel.h>
 #include <qevent.h>
 #include <qpainter.h>
-#include <qbitmap.h>
+#include <qdesktopwidget.h>
+#include <qapplication.h>
 
 class QPositionSelection : public QDialog
 {
@@ -25,13 +23,12 @@ public:
 		lb.setMinimumHeight(30);
 		lb.setMaximumWidth(150);
 		lb.setMaximumHeight(30);
-		lb.setFont(QFont("Microsoft YaHei", 15, 700));
 		lb.setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-		lb.setStyleSheet("background-color:#000;color:#FFF;");
+		lb.setStyleSheet(u8"background-color:black;color:white;font-family:\"Microsoft YaHei\";font-size:24px;");
 		lb.hide();
 	}
 
-	void Start()
+	QPoint Start()
 	{
 		screen = QApplication::desktop()->screenGeometry();
 		setMinimumWidth(screen.width());
@@ -42,17 +39,12 @@ public:
 
 		grabMouse();
 		exec();
-	}
-
-	QPoint relPos()
-	{
 		return ms;
 	}
 
-	POINT absPos()
-	{
-		return msRel;
-	}
+	QPoint relPos() const { return ms; }
+
+	POINT absPos() const { return msRel; }
 
 private:
 	QLabel lb;
@@ -66,7 +58,7 @@ private:
 
 		GetCursorPos(&msRel);
 		ms = et->globalPos();
-		lb.setText(QString::number(msRel.x) + " - " + QString::number(msRel.y));
+		lb.setText(QString::number(msRel.x) + QString::fromUtf8(u8" - ") + QString::number(msRel.y));
 
 		if (ms.x() > screen.width() - 210) lbPos.setX(ms.x() - 180);
 		else lbPos.setX(ms.x() + 30);

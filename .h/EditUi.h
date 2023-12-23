@@ -1,8 +1,5 @@
 ﻿#pragma once
-#pragma execution_character_set("utf-8")
-
 #include <qcolordialog.h>
-#include <qpalette.h>
 #include <qevent.h>
 #include <qtimer.h>
 #include <qbuttongroup.h>
@@ -10,18 +7,15 @@
 #include "QPositionSelection.h"
 #include "QSelectionBox.h"
 #include "ui_EditUi.h"
-#include "QuickInputDef.h"
+#include "../static.h"
 
-class EditUi : public QDialog
+class EditUi: public QDialog
 {
 	Q_OBJECT
 public:
-
-	EditUi(QuickInputStruct* qis = 0, List<Item>* items = 0) : QDialog()
+	EditUi(List<QiItem>& items) : QDialog()
 	{
-		this->qis = qis;
-		this->items = items;
-		qis->hdc = GetDC(0);
+		this->items = &items;
 
 		ui.setupUi(this);
 		setWindowFlags(Qt::FramelessWindowHint);
@@ -30,12 +24,11 @@ public:
 		ui.bnColorEdit->setDisabled(1);
 		ui.bnLoopEdit->setDisabled(1);
 
-		ControlInit();
-		ControlEvent();
+		WidInit();
+		WidEvent();
 	}
 
 private:
-
 	const int32 posMin = -10000;
 	const int32 posMax = 10000;
 	const int32 moveRandMax = 9999;
@@ -45,18 +38,17 @@ private:
 	const int32 colorMax = 255;
 
 	Ui::EditUiClass ui;
-	QuickInputStruct* qis;
-	List<Item>* items = 0;
+	List<QiItem>* items = 0;
 	QPoint msPos;
 	bool changing = 0;
 	bool editing = 0;
 	bool posCtrl = 0;
 
-	void ControlInit()
+	void WidInit()
 	{
 		ui.hkKey->Mode(0);
 		ui.hkKey->VirtualKey(VK_LBUTTON);
-		ui.bnColorValue->setStyleSheet("background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #FFF,stop:0.5 #F8F,stop:1 #F00);border:none;width:20px;height:20px");
+		ui.bnColorValue->setStyleSheet(u8"background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #FFF,stop:0.5 #F8F,stop:1 #F00);border:none;width:20px;height:20px");
 		ui.bnLoopEdit->setText(UI::etEdit);
 		ui.bnColorEdit->setText(UI::etEdit);
 		ui.bnDel->setText(UI::etDel);
@@ -123,14 +115,14 @@ private:
 
 	}
 
-	void ControlEvent()
+	void WidEvent()
 	{
 		ui.tbItem->installEventFilter(this);
 		ui.tbItem->viewport()->installEventFilter(this);
 
+		connect(ui.tbItem, SIGNAL(cellChanged(int, int)), this, SLOT(OnTbChanged(int, int)));
 		connect(ui.tbItem, SIGNAL(cellClicked(int, int)), this, SLOT(OnTbClicked(int, int)));
 		connect(ui.tbItem, SIGNAL(cellDoubleClicked(int, int)), this, SLOT(OnTbDoubleClick(int, int)));
-		connect(ui.tbItem, SIGNAL(cellChanged(int, int)), this, SLOT(OnTbChanged(int, int)));
 		connect(ui.bnClose, SIGNAL(clicked()), this, SLOT(OnBnClose()));
 		connect(ui.bnKeyAdd, SIGNAL(clicked()), this, SLOT(OnBnKeyAdd()));
 		connect(ui.bnMoveAdd, SIGNAL(clicked()), this, SLOT(OnBnMoveAdd()));
@@ -168,7 +160,8 @@ private:
 		ui.etTime->setText(QString::number(pt.x));
 		ui.etDelayRand->setText(QString::number(pt.y));
 	}
-	void SetRbColorMode(bool mode) { if (mode) ui.rbColorGet->setChecked(1); else ui.rbColorNot->setChecked(1); }
+	void SetRbColorMode(bool mode) { if (mode) ui.rbColorNot->setChecked(1); else ui.rbColorGet->setChecked(1); }
+	void SetChbColorMove(bool state) {  ui.chbColorMove->setChecked(state); }
 	void SetEtColorRect(RECT rect)
 	{
 		ui.etColorL->setText(QString::number(rect.left));
@@ -176,130 +169,123 @@ private:
 		ui.etColorR->setText(QString::number(rect.right));
 		ui.etColorB->setText(QString::number(rect.bottom));
 	}
-	void SetEtColorValue(QColor color)
+	void SetEtColorValue(COLORREF color)
 	{
-		ui.etR->setText(QString::number(color.red()));
-		ui.etG->setText(QString::number(color.green()));
-		ui.etB->setText(QString::number(color.blue()));
-		ui.etCX->setText(QString::number(color.alpha()));
+		ui.etR->setText(QString::number(GetRValue(color)));
+		ui.etG->setText(QString::number(GetGValue(color)));
+		ui.etB->setText(QString::number(GetBValue(color)));
+		ui.etCX->setText(QString::number(GetAValue(color)));
 	}
-	void SetColor(QColor color) {
-		ui.etR->setText(QString::number(color.red()));
-		ui.etG->setText(QString::number(color.green()));
-		ui.etB->setText(QString::number(color.blue()));
+	void SetColor(COLORREF color) {
+		ui.etR->setText(QString::number(GetRValue(color)));
+		ui.etG->setText(QString::number(GetGValue(color)));
+		ui.etB->setText(QString::number(GetBValue(color)));
 	}
-	void SetEtLoopCount(UINT count) { ui.etCount->setText(QString::number(count)); }
+	void SetEtLoopCount(uint32 count) { ui.etCount->setText(QString::number(count)); }
 
-	BYTE GetHkKey() { return ui.hkKey->virtualKey(); }
-	RECT GetEtPos() {
-		int l = ui.etX->text().toInt();
-		int t = ui.etY->text().toInt();
-		int r = ui.etMoveRand->text().toInt();
-		if (l > posMax) l = posMax;
-		if (t > posMax) t = posMax;
-		if (r > posMax) r = posMax;
-		if (l < posMin) l = posMin;
-		if (t < posMin) t = posMin;
-		return { l, t, r, 0 };
+	QiKey GetKey() {
+		QiKey item;
+		if (ui.rbDown->isChecked()) item.state = QiKey::down;
+		else if (ui.rbUp->isChecked()) item.state = QiKey::up;
+		else if (ui.rbClick->isChecked()) item.state = QiKey::click;
+		item.vk =  ui.hkKey->virtualKey();
+		return item;
 	}
-	POINT GetEtDelay() {
-		int x = ui.etTime->text().toInt();
-		int y = ui.etDelayRand->text().toInt();
-		if (x > delayMax) x = delayMax;
-		if (y > delayMax) y = delayRandMax;
-		return { x, y };
+	QiMouse GetMouse() {
+		QiMouse item;
+		item.state = ui.rbMove->isChecked();
+		int x = ui.etX->text().toInt();
+		int y = ui.etY->text().toInt();
+		int ex = ui.etMoveRand->text().toInt();
+		if (x > posMax) x = posMax;
+		if (y > posMax) y = posMax;
+		if (ex > posMax) ex = posMax;
+		if (x < posMin) x = posMin;
+		if (y < posMin) y = posMin;
+		item.x = x;
+		item.y = y;
+		item.ex = ex;
+		return item;
 	}
-	bool GetRbColorMode() { return ui.rbColorGet->isChecked(); }
-	RECT GetEtColorRect() {
-		int l = ui.etColorL->text().toInt();
-		int t = ui.etColorT->text().toInt();
-		int r = ui.etColorR->text().toInt();
-		int b = ui.etColorB->text().toInt();
-		if (l > posMax) l = posMax;
-		if (t > posMax) t = posMax;
-		if (r > posMax) r = posMax;
-		if (b > posMax) b = posMax;
-		return { l,t,r,b };
+	QiDelay GetDelay() {
+		QiDelay item;
+		int ms = ui.etTime->text().toInt();
+		int ex = ui.etDelayRand->text().toInt();
+		if (ms > delayMax) ms = delayMax;
+		if (ex > delayMax) ex = delayRandMax;
+		item.ms = ms;
+		item.ex = ex;
+		return item;
 	}
-	QColor GetEtColorValue() {
-		int r = ui.etR->text().toInt();
-		int g = ui.etG->text().toInt();
-		int b = ui.etB->text().toInt();
-		int x = 0;
-		if (ui.etCX->text() == "") x = 5;
-		else x = ui.etCX->text().toInt();
-		if (r > colorMax) r = colorMax;
-		if (g > colorMax) g = colorMax;
-		if (b > colorMax) b = colorMax;
-		if (x > colorMax) x = colorMax;
-		QColor color;
-		color.setRgba(qRgba(r, g, b, x));
-		return color;
+	QiText GetText() {
+		QiText item;
+		item.str = (LPCWSTR)ui.etText->toPlainText().utf16();
+		return item;
 	}
-	UINT GetEtLoopCount() {
+	QiColor GetColor() {
+		QiColor item;
+		item.state = ui.rbColorNot->isChecked();
+		item.move = ui.chbColorMove->isChecked();
+		{
+			int l = ui.etColorL->text().toInt();
+			int t = ui.etColorT->text().toInt();
+			int r = ui.etColorR->text().toInt();
+			int b = ui.etColorB->text().toInt();
+			if (l > posMax) l = posMax;
+			if (t > posMax) t = posMax;
+			if (r > posMax) r = posMax;
+			if (b > posMax) b = posMax;
+			item.rect = { l, t, r, b };
+		}
+		{
+			int r = ui.etR->text().toInt();
+			int g = ui.etG->text().toInt();
+			int b = ui.etB->text().toInt();
+			int ex = 0;
+			if (ui.etCX->text() == "") ex = 5;
+			else ex = ui.etCX->text().toInt();
+			if (r > colorMax) r = colorMax;
+			if (g > colorMax) g = colorMax;
+			if (b > colorMax) b = colorMax;
+			if (ex > colorMax) ex = colorMax;
+			COLORREF rgbe = RGBA(r, g, b, ex);
+			item.rgbe = rgbe;
+		}
+		return item;
+	}
+	QiLoop GetLoop() {
+		QiLoop item;
 		int i = 0;
 		if (ui.etCount->text() == "") i = 1;
 		else i = ui.etCount->text().toInt();
 		if (i > loopCountMax) i = loopCountMax;
-		return i;
+		item.count = i;
+		return item;
 	}
 
-	void LoadHkKey(Item* item) { SetHkKey(item[0].a); }
-	void LoadEtPos(Item* item) { SetEtPos({ item[0].b, item[0].c, item[0].a }); }
-	void LoadEtDelay(Item* item) { SetEtDelay({ item->b, item->c }); }
-	void LoadEtColorRect(Item* item)
-	{
-		RECT rect;
-		rect.left = (DWORD)item[0].b >> 16;
-		rect.top = (WORD)item[0].b;
-		rect.right = (DWORD)item[0].c >> 16;
-		rect.bottom = (WORD)item[0].c;
-		SetEtColorRect(rect);
-		SetRbColorMode(item[0].d);
+	void LoadKey(const QiKey& item) {
+		if (item.state == QiKey::down) ui.rbDown->setCheckable(1);
+		else if (item.state == QiKey::up) ui.rbUp->setCheckable(1);
+		else if (item.state == QiKey::click) ui.rbClick->setCheckable(1);
+		SetHkKey(item.vk);
 	}
-	void LoadEtColorValue(Item* item)
-	{
-		QColor color;
-		color.setRgba(item[0].a);
-		SetEtColorValue(color);
-		SetRbColorMode(item[0].d);
+	void LoadMouse(const QiMouse& item) {
+		if (item.state == QiMouse::pos)
+		{
+			ui.rbPos->setChecked(1);
+			OnRbPos(1);
+		}
+		else if (item.state == QiMouse::move)
+		{
+			ui.rbMove->setChecked(1);
+			OnRbMove(1);
+		}
+		SetEtPos({ item.x, item.y, item.ex, 0 });
 	}
-	void LoadEtLoopCount(Item* item)
-	{
-		SetEtLoopCount(item->b);
-	}
-
-	void SaveHkKey(Item* item) { item[0].a = GetHkKey(); }
-	void SaveEtPos(Item* item)
-	{
-		RECT pt = GetEtPos();
-		item[0].b = pt.left;
-		item[0].c = pt.top;
-		item[0].a = pt.right;
-	}
-	void SaveEtDelay(Item* item)
-	{
-		POINT pt = GetEtDelay();
-		item[0].b = pt.x;
-		item[0].c = pt.y;
-	}
-	void SaveEtColorRect(Item* item)
-	{
-		RECT rect = GetEtColorRect();
-		item[0].b = rect.left << 16 | rect.top;
-		item[0].c = rect.right << 16 | rect.bottom;
-		item[0].d = GetRbColorMode();
-	}
-	void SaveEtColorValue(Item* item)
-	{
-		QColor color = GetEtColorValue();
-		item[0].a = color.rgba();
-		item[0].d = GetRbColorMode();
-	}
-	void SaveEtLoopCount(Item* item)
-	{
-		item[0].b = GetEtLoopCount();
-	}
+	void LoadDelay(const QiDelay& item) { SetEtDelay({ item.ms, item.ex }); }
+	void LoadText(const QiText& item) { ui.etText->setText(QString::fromWCharArray(item.str.c_str())); }
+	void LoadColor(const QiColor& item) { SetRbColorMode(item.state); SetChbColorMove(item.move); SetEtColorRect(item.rect); SetEtColorValue(item.rgbe); }
+	void LoadLoop(const QiLoop& item) { SetEtLoopCount(item.count); }
 
 	//=================Control Data
 
@@ -331,157 +317,173 @@ private:
 
 	void TbUpdate()
 	{
+		disconnect(ui.tbItem, SIGNAL(cellChanged(int, int)), this, SLOT(OnTbChanged(int, int)));
 		ui.tbItem->clearMask();
-		ui.tbItem->setRowCount(items[0].len());
+		ui.tbItem->setRowCount(items->len());
 		ui.tbItem->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::Fixed);
 		ui.tbItem->verticalHeader()->setDefaultAlignment(Qt::AlignCenter);
 		ui.tbItem->verticalHeader()->setDefaultSectionSize(0);
 
-		for (uint32 u = 0; u < items[0].len(); u++)
+		for (uint32 u = 0; u < items->len(); u++)
 		{
 			QString ps;
-			switch (items[0][u].type)
+			switch (items[0][u].type())
 			{
-			case Item::endLoop:
-				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiEndLoop));
-				break;
-			case Item::end:
+			case QiAction::end:
+			{
 				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiEnd));
+			}
 				break;
-			case Item::delay:
+			case QiAction::delay:
+			{
 				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiWait));
-				ps = QString::number(items[0][u].b);
-				ps += "ㅤㅤ";
-				ps += QString::number(items[0][u].c);
+				ps = QString::number(QiDelayPtr(items[0][u])->ms);
+				ps += u8"ㅤㅤ";
+				ps += QString::number(QiDelayPtr(items[0][u])->ex);
+			}
 				break;
-			case Item::down:
-				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiDown));
-				ps = QString::fromWCharArray(Input::Name(items[0][u].a));
+			case QiAction::key:
+			{
+				if (QiKeyPtr(items[0][u])->state == QiKey::down)
+					ui.	tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiDown));
+				else if (QiKeyPtr(items[0][u])->state == QiKey::up)
+					ui.	tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiUp));
+				else if (QiKeyPtr(items[0][u])->state == QiKey::click)
+					ui.	tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiClick));
+				ps = QString::fromWCharArray(Input::Name(QiKeyPtr(items[0][u])->vk));
+			}
 				break;
-			case Item::up:
-				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiUp));
-				ps = QString::fromWCharArray(Input::Name(items[0][u].a));
+			case QiAction::mouse:
+			{
+				if (QiMousePtr(items[0][u])->state == QiMouse::pos)
+					ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiPos));
+				else if (QiMousePtr(items[0][u])->state == QiMouse::move)
+					ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiMove));
+				ps = QString::number(QiMousePtr(items[0][u])->x);
+				ps += u8" - ";
+				ps += QString::number(QiMousePtr(items[0][u])->y);
+				ps += u8"ㅤㅤ";
+				ps += QString::number(QiMousePtr(items[0][u])->ex);
+			}
 				break;
-			case Item::click:
-				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiClick));
-				ps = QString::fromWCharArray(Input::Name(items[0][u].a));
-				break;
-			case Item::pos:
-				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiPos));
-				ps = QString::number(items[0][u].b);
-				ps += " - ";
-				ps += QString::number(items[0][u].c);
-				ps += "ㅤㅤ";
-				ps += QString::number(items[0][u].a);
-				break;
-			case Item::move:
-				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiMove));
-				ps = QString::number(items[0][u].b);
-				ps += "ㅤㅤ";
-				ps += QString::number(items[0][u].c);
-				ps += "ㅤㅤ";
-				ps += QString::number(items[0][u].a);
-				break;
-			case Item::text:
+			case QiAction::text:
+			{
 				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiText));
-				ps = QString::fromWCharArray(items[0][u].s.substr(0, 32).c_str());
-				if (items[0][u].s.length() > 31) ps += "...";
+				ps = QString::fromWCharArray(QiTextPtr(items[0][u])->str.substr(0, 32).c_str());
+				if (QiTextPtr(items[0][u])->str.length() > 31) ps += u8"...";
+			}
 				break;
-			case Item::color:
+			case QiAction::color:
 			{
 				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiColor));
-				QColor color;
-				color.setRgba(items[0][u].a);
-				ps = "(";
-				ps += QString::number(HIWORD(items[0][u].b));
-				ps += ",";
-				ps += QString::number(LOWORD(items[0][u].b));
-				ps += ",";
-				ps += QString::number(HIWORD(items[0][u].c));
-				ps += ",";
-				ps += QString::number(LOWORD(items[0][u].c));
-				ps += ")　(";
-				ps += QString::number(color.red());
-				ps += ",";
-				ps += QString::number(color.green());
-				ps += ",";
-				ps += QString::number(color.blue());
-				ps += ",";
-				ps += QString::number(color.alpha());
-				if (items[0][u].d) ps += ")　找到";
-				else ps += ")　未找到";
-				break;
+				ps = u8"(";
+				ps += QString::number(QiColorPtr(items[0][u])->rect.left);
+				ps += u8",";
+				ps += QString::number(QiColorPtr(items[0][u])->rect.top);
+				ps += u8",";
+				ps += QString::number(QiColorPtr(items[0][u])->rect.right);
+				ps += u8",";
+				ps += QString::number(QiColorPtr(items[0][u])->rect.bottom);
+				ps += u8")　(";
+				ps += QString::number(GetRValue(QiColorPtr(items[0][u])->rgbe));
+				ps += u8",";
+				ps += QString::number(GetGValue(QiColorPtr(items[0][u])->rgbe));
+				ps += u8",";
+				ps += QString::number(GetBValue(QiColorPtr(items[0][u])->rgbe));
+				ps += u8",";
+				ps += QString::number(GetAValue(QiColorPtr(items[0][u])->rgbe));
+				if (QiColorPtr(items[0][u])->state == QiColor::find)
+				{
+					ps += u8")　找到";
+					if (QiColorPtr(items[0][u])->move) ps += u8"并移动";
+					else ps += u8"不移动";
+				}
+				else ps += u8")　未找到";
 			}
-			case Item::loop:
+				break;
+			case QiAction::loop:
+			{
 				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiLoop));
-				if (items[0][u].b) ps = QString::number(items[0][u].b);
-				else ps = "无限";
+				if (QiLoopPtr(items[0][u])->count) ps = QString::number(QiLoopPtr(items[0][u])->count);
+				else ps = u8"无限";
+			}
+				break;
+			case QiAction::loopEnd:
+			{
+				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiEndLoop));
+			}
 				break;
 			}
 			ui.tbItem->setItem(u, 1, new QTableWidgetItem(ps));
-			if (items[0][u].type == Item::text) ui.tbItem->setItem(u, 2, new QTableWidgetItem(""));
-			else ui.tbItem->setItem(u, 2, new QTableWidgetItem(QString::fromWCharArray(items[0][u].s.c_str())));
+			ui.tbItem->setItem(u, 2, new QTableWidgetItem(QString::fromWCharArray(items[0][u].action()->mark.c_str())));
 			ui.tbItem->item(u, 0)->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 			ui.tbItem->item(u, 1)->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 			ui.tbItem->item(u, 2)->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 		}
+		connect(ui.tbItem, SIGNAL(cellChanged(int, int)), this, SLOT(OnTbChanged(int, int)));
+	}
+
+	void GetItem(int32 pos)
+	{
+		switch (items[0][pos].type())
+		{
+		case QiAction::delay:
+			LoadDelay(*QiDelayPtr(items[0][pos]));
+			break;
+		case QiAction::key:
+			LoadKey(*QiKeyPtr(items[0][pos]));
+			break;
+		case QiAction::mouse:
+			LoadMouse(*QiMousePtr(items[0][pos]));
+			break;
+		case QiAction::text:
+			LoadText(*QiTextPtr(items[0][pos]));
+			break;
+		case QiAction::color:
+			LoadColor(*QiColorPtr(items[0][pos]));
+			break;
+		case QiAction::loop:
+			LoadLoop(*QiLoopPtr(items[0][pos]));
+			break;
+		}
+	}
+
+	void SetItem(int32 type, int32 pos)
+	{
+		QiItem item;
+		switch (type)
+		{
+		case QiAction::end: item.Set(QiAction::end); break;
+		case QiAction::delay: item = GetDelay(); break;
+		case QiAction::key: item = GetKey(); break;
+		case QiAction::mouse: item = GetMouse(); break;
+		case QiAction::text: item = GetText(); break;
+		case QiAction::color: item = GetColor(); break;
+		case QiAction::loop: item = GetLoop(); break;
+		case QiAction::loopEnd: item.Set(QiAction::loopEnd); break;
+		}
+		if (items[0][pos].type() == QiAction::color)
+		{
+			if (type == QiAction::color) QiColorPtr(item)->next = QiColorPtr(items[0][pos])->next;
+			if (type == QiAction::loop) QiLoopPtr(item)->next = QiColorPtr(items[0][pos])->next;
+		}
+		else if (items[0][pos].type() == QiAction::loop)
+		{
+			if (type == QiAction::color) QiColorPtr(item)->next = QiLoopPtr(items[0][pos])->next;
+			if (type == QiAction::loop) QiLoopPtr(item)->next = QiLoopPtr(items[0][pos])->next;
+		}
+		items[0][pos] = item;
 	}
 
 	void AddItem(int32 type)
 	{
-		Item item;
 		int pos = ui.tbItem->currentRow();
+		if (pos < 0) pos = items->len();
+		else if ((pos + 1) <= items->len()) pos++;
+		
+		items->Ins(pos);
+		SetItem(type, pos);
 
-		if (pos < 0) pos = items[0].len();
-		else if ((pos + 1) <= items[0].len()) pos++;
-
-		switch (type)
-		{
-		case Item::endLoop:
-			item.type = Item::endLoop;
-			break;
-		case Item::end:
-			item.type = Item::end;
-			break;
-		case Item::delay:
-			item.type = Item::delay;
-			SaveEtDelay(&item);
-			break;
-		case Item::down:
-			item.type = Item::down;
-			SaveHkKey(&item);
-			break;
-		case Item::up:
-			item.type = Item::up;
-			SaveHkKey(&item);
-			break;
-		case Item::click:
-			item.type = Item::click;
-			SaveHkKey(&item);
-			break;
-		case Item::pos:
-			item.type = Item::pos;
-			SaveEtPos(&item);
-			break;
-		case Item::move:
-			item.type = Item::move;
-			SaveEtPos(&item);
-			break;
-		case Item::text:
-			item.type = Item::text;
-			item.s = (LPCWSTR)ui.etText->toPlainText().utf16();
-			break;
-		case Item::color:
-			item.type = Item::color;
-			SaveEtColorRect(&item);
-			SaveEtColorValue(&item);
-			break;
-		case Item::loop:
-			item.type = Item::loop;
-			SaveEtLoopCount(&item);
-		}
-
-		items[0].Ins(pos, item);
 		TbUpdate();
 		ui.tbItem->setCurrentItem(ui.tbItem->item(pos, 0));
 	}
@@ -491,54 +493,8 @@ private:
 		int pos = ui.tbItem->currentRow();
 		if (pos < 0) return;
 
-		switch (type)
-		{
-		case Item::endLoop:
-			items[0][pos].type = Item::endLoop;
-			break;
-		case Item::end:
-			items[0][pos].type = Item::end;
-			break;
-		case Item::delay:
-			items[0][pos].type = Item::delay;
-			items[0][pos].b = ui.etTime->text().toInt();
-			items[0][pos].c = ui.etDelayRand->text().toInt();
-			SaveEtDelay(&items[0][pos]);
-			break;
-		case Item::down:
-			items[0][pos].type = Item::down;
-			SaveHkKey(&items[0][pos]);
-			break;
-		case Item::up:
-			items[0][pos].type = Item::up;
-			SaveHkKey(&items[0][pos]);
-			break;
-		case Item::click:
-			items[0][pos].type = Item::click;
-			SaveHkKey(&items[0][pos]);
-			break;
-		case Item::pos:
-			items[0][pos].type = Item::pos;
-			SaveEtPos(&items[0][pos]);
-			break;
-		case Item::move:
-			items[0][pos].type = Item::move;
-			SaveEtPos(&items[0][pos]);
-			break;
-		case Item::text:
-			items[0][pos].type = Item::text;
-			items[0][pos].s = (LPCWSTR)ui.etText->toPlainText().utf16();
-			break;
-		case Item::color:
-			items[0][pos].type = Item::color;
-			SaveEtColorRect(&items[0][pos]);
-			SaveEtColorValue(&items[0][pos]);
-			break;
-		case Item::loop:
-			items[0][pos].type = Item::loop;
-			SaveEtLoopCount(&items[0][pos]);
-			break;
-		}
+		SetItem(type, pos);
+
 		TbUpdate();
 		ui.tbItem->setCurrentItem(0);
 		changing = 0;
@@ -552,12 +508,12 @@ private:
 
 		if (up && ((pos - 1) >= 0))
 		{
-			items[0].Swp(pos, pos - 1);
+			items->Swp(pos, pos - 1);
 			ui.tbItem->setCurrentItem(ui.tbItem->item(pos - 1, 0));
 		}
 		else if (!up && (pos + 1) < ui.tbItem->rowCount())
 		{
-			items[0].Swp(pos, pos + 1);
+			items->Swp(pos, pos + 1);
 			ui.tbItem->setCurrentItem(ui.tbItem->item(pos + 1, 0));
 		}
 		TbUpdate();
@@ -580,7 +536,6 @@ private:
 	}
 
 private slots:
-
 	bool eventFilter(QObject* obj, QEvent* et)
 	{
 		if (obj == ui.tbItem)
@@ -623,13 +578,20 @@ private slots:
 
 				if (after < 0) return 0;
 
-				items[0].Mov(before, after);
+				items->Mov(before, after);
 				TbUpdate();
 				ui.tbItem->setCurrentItem(ui.tbItem->item(after, 0));
 				return 1;
 			}
 		}
 		return 0;
+	}
+	
+	void OnTbChanged(int row, int column)
+	{
+		if (row < 0) return;
+		if (column != 2) return;
+		items[0][row].action()->mark = (LPCWSTR)(ui.tbItem->item(row, 2)->text().utf16());
 	}
 
 	void OnTbClicked(int row, int column)
@@ -644,8 +606,8 @@ private slots:
 		}
 		else
 		{
-			if (items[0][row].type == Item::color) ui.bnColorEdit->setDisabled(0);
-			else if (items[0][row].type == Item::loop) ui.bnLoopEdit->setDisabled(0);
+			if (items[0][row].type() == QiAction::color) ui.bnColorEdit->setDisabled(0);
+			else if (items[0][row].type() == QiAction::loop) ui.bnLoopEdit->setDisabled(0);
 		}
 	}
 
@@ -653,60 +615,10 @@ private slots:
 	{
 		if (row < 0) return;
 
-		switch (items[0][row].type)
-		{
-		case Item::delay:
-			LoadEtDelay(&items[0][row]);
-			break;
-		case Item::down:
-			ui.rbDown->setChecked(1);
-			ui.rbUp->setChecked(0);
-			ui.rbClick->setChecked(0);
-			LoadHkKey(&items[0][row]);
-			break;
-		case Item::up:
-			ui.rbDown->setChecked(0);
-			ui.rbUp->setChecked(1);
-			ui.rbClick->setChecked(0);
-			LoadHkKey(&items[0][row]);
-			break;
-		case Item::click:
-			ui.rbDown->setChecked(0);
-			ui.rbUp->setChecked(0);
-			ui.rbClick->setChecked(1);
-			LoadHkKey(&items[0][row]);
-			break;
-		case Item::pos:
-			ui.rbPos->setChecked(1);
-			OnRbPos(1);
-			LoadEtPos(&items[0][row]);
-			break;
-		case Item::move:
-			ui.rbMove->setChecked(1);
-			OnRbMove(1);
-			LoadEtPos(&items[0][row]);
-			break;
-		case Item::text:
-			ui.etText->setText(QString::fromWCharArray(items[0][row].s.c_str()));
-			break;
-		case Item::color:
-			LoadEtColorRect(&items[0][row]);
-			LoadEtColorValue(&items[0][row]);
-			break;
-		case Item::loop:
-			LoadEtLoopCount(&items[0][row]);
-			break;
-		}
+		GetItem(row);
+
 		changing = 1;
 		SetChanging();
-	}
-
-	void OnTbChanged(int row, int column)
-	{
-		if (row < 0) return;
-		if (column != 2) return;
-		if (items[0][row].type == Item::text) return;
-		items[0][row].s = ui.tbItem->item(row, 2)->text().toStdWString();
 	}
 
 	void OnBnClose()
@@ -716,47 +628,26 @@ private slots:
 
 	void OnBnKeyAdd()
 	{
-		if (ui.rbDown->isChecked())
-		{
-			if (changing) ChangeItem(Item::down);
-			else AddItem(Item::down);
-		}
-		else if (ui.rbUp->isChecked())
-		{
-			if (changing) ChangeItem(Item::up);
-			else AddItem(Item::up);
-		}
-		else if (ui.rbClick->isChecked())
-		{
-			if (changing) ChangeItem(Item::click);
-			else AddItem(Item::click);
-		}
+		if (changing) ChangeItem(QiAction::key);
+		else AddItem(QiAction::key);
 	}
 
 	void OnBnMoveAdd()
 	{
-		if (ui.rbMove->isChecked())
-		{
-			if (changing) ChangeItem(Item::move);
-			else AddItem(Item::move);
-		}
-		else
-		{
-			if (changing) ChangeItem(Item::pos);
-			else AddItem(Item::pos);
-		}
+		if (changing) ChangeItem(QiAction::mouse);
+		else AddItem(QiAction::mouse);
 	}
 
 	void OnBnDelayAdd()
 	{
-		if (changing) ChangeItem(Item::delay);
-		else AddItem(Item::delay);
+		if (changing) ChangeItem(QiAction::delay);
+		else AddItem(QiAction::delay);
 	}
 
 	void OnBnLoopAdd()
 	{
-		if (changing) ChangeItem(Item::loop);
-		else AddItem(Item::loop);
+		if (changing) ChangeItem(QiAction::loop);
+		else AddItem(QiAction::loop);
 	}
 
 	void OnBnLoopEdit()
@@ -764,24 +655,22 @@ private slots:
 		int pos = ui.tbItem->currentRow();
 		if (pos < 0) return;
 
-		if (items[0][pos].type != Item::loop) return;
-		EditUi edit(qis, &items[0][pos].next);
-		edit.setWindowTitle("编辑 - 循环");
+		if (items[0][pos].type() != QiAction::loop) return;
+		EditUi edit(QiLoopPtr(items[0][pos])->next);
+		edit.setWindowTitle(u8"编辑 - 循环");
 		edit.exec();
 	}
 
 	void OnBnTextAdd()
 	{
-		List<Item> item = *this->items;
-
-		if (changing) ChangeItem(Item::text);
-		else AddItem(Item::text);
+		if (changing) ChangeItem(QiAction::text);
+		else AddItem(QiAction::text);
 	}
 
 	void OnBnColorAdd()
 	{
-		if (changing) ChangeItem(Item::color);
-		else AddItem(Item::color);
+		if (changing) ChangeItem(QiAction::color);
+		else AddItem(QiAction::color);
 	}
 
 	void OnColorEdit()
@@ -789,22 +678,22 @@ private slots:
 		int pos = ui.tbItem->currentRow();
 		if (pos < 0) return;
 
-		if (items[0][pos].type != Item::color) return;
-		EditUi edit(qis, &items[0][pos].next);
-		edit.setWindowTitle("编辑 - 查找颜色");
+		if (items[0][pos].type() != QiAction::color) return;
+		EditUi edit(QiColorPtr(items[0][pos])->next);
+		edit.setWindowTitle(u8"编辑 - 查找颜色");
 		edit.exec();
 	}
 
 	void OnBnEndAdd()
 	{
-		if (changing) ChangeItem(Item::end);
-		else AddItem(Item::end);
+		if (changing) ChangeItem(QiAction::end);
+		else AddItem(QiAction::end);
 	}
 
 	void OnBnEndLoopAdd()
 	{
-		if (changing) ChangeItem(Item::endLoop);
-		else AddItem(Item::endLoop);
+		if (changing) ChangeItem(QiAction::loopEnd);
+		else AddItem(QiAction::loopEnd);
 	}
 
 	void OnBnDel()
@@ -832,7 +721,7 @@ private slots:
 	void OnBnColorRect()
 	{
 		QSelectionBox sb;
-		sb.setBoxStyleSheet("background-color:rgba(240,192,224,0.5);border:1px solid #F00;");
+		sb.setBoxStyleSheet(u8"background-color:rgba(240,192,224,0.5);border:1px solid #F00;");
 		sb.Start();
 		RECT rect = sb.absRect();
 		POINT lt = RelToAbs({ rect.left, rect.top });
@@ -846,14 +735,16 @@ private slots:
 		QColorSelection cs;
 		QColorDialog cd(cs.Start(), this);
 		cd.exec();
-		SetColor(cd.currentColor());
-		QString style = "background-color:rgb(";
+		
+		SetColor(RGB(cd.currentColor().red(), cd.currentColor().green(), cd.currentColor().blue()));
+
+		QString style = u8"background-color:rgb(";
 		style += QString::number(cd.currentColor().red());
-		style += ",";
+		style += u8",";
 		style += QString::number(cd.currentColor().green());
-		style += ",";
+		style += u8",";
 		style += QString::number(cd.currentColor().blue());
-		style += ");border:none;width:20px;height:20px";
+		style += u8");border:none;width:20px;height:20px";
 		ui.bnColorValue->setStyleSheet(style);
 	}
 
@@ -863,9 +754,9 @@ private slots:
 		{
 			ui.etX->setValidator(new QIntValidator(0, posMax, this));
 			ui.etY->setValidator(new QIntValidator(0, posMax, this));
-			if (ui.etX->text().toInt() < 0) ui.etX->setText("0");
-			if (ui.etY->text().toInt() < 0) ui.etY->setText("0");
-			ui.bnPos->setText("+");
+			if (ui.etX->text().toInt() < 0) ui.etX->setText(u8"0");
+			if (ui.etY->text().toInt() < 0) ui.etY->setText(u8"0");
+			ui.bnPos->setText(u8"+");
 			ui.bnPos->setDisabled(0);
 		}
 	}
@@ -876,11 +767,8 @@ private slots:
 		{
 			ui.etX->setValidator(new QIntValidator(posMin, posMax, this));
 			ui.etY->setValidator(new QIntValidator(posMin, posMax, this));
-			ui.bnPos->setText("×");
+			ui.bnPos->setText(u8"×");
 			ui.bnPos->setDisabled(1);
 		}
-	}
-
-	void OnRbColor(bool state) {
 	}
 };

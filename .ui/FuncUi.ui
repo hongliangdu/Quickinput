@@ -377,7 +377,7 @@ QComboBox QAbstractItemView {
            <bool>false</bool>
           </property>
           <property name="placeholderText">
-           <string>0~100000毫秒</string>
+           <string>0~99999毫秒</string>
           </property>
          </widget>
         </item>

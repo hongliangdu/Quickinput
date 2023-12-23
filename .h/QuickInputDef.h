@@ -1,48 +1,16 @@
 ﻿#pragma once
-#pragma execution_character_set("utf-8")
 #include <QString>
 #include <QFont>
-#include "../header/cg.h"
-#include "../header/CJsonObject.h"
 #include "TipsWindow.h"
+#include "QiItem.h"
+#include "../static.h"
 
-/*
-	ItemParam {
-		endLoop, end {
-			null
-		}
+struct QuickInputStruct;
 
-		delay {
-			b = count
-			c = random
-		}
-
-		down, up, click {
-			a = key
-		}
-
-		pos, move {
-			a = random
-			b = y
-			c = y
-		}
-
-		text {
-			text = text
-		}
-
-		color {
-			a = RGB + Ex
-			b = left + top
-			c = right + bottom
-			d = isFind
-		}
-
-		loop {
-			b = count
-		}
-	}
-*/
+struct Global
+{
+	static QuickInputStruct qi;
+};
 
 struct UI {
 	static std::wstring qiOn;
@@ -71,30 +39,6 @@ struct UI {
 	static QString rcClose;
 };
 
-struct Item
-{
-	enum {
-		endLoop = -2,
-		end = -1,
-		delay = 0,
-		down = 1,
-		up = 2,
-		click = 3,
-		pos = 4,
-		move = 5,
-		text = 6,
-		color = 7,
-		loop = 8
-	};
-	int8 type = 0;
-	int32 a = 0;
-	int32 b = 0;
-	int32 c = 0;
-	int32 d = 0;
-	std::wstring s;
-	List<Item> next;
-};
-
 struct Script
 {
 	enum {
@@ -105,18 +49,18 @@ struct Script
 	bool state = 0;
 	bool block = 0;
 	bool k1 = 0, k2 = 0, active = 0;
-	uint8 mode = 0;
+	uint32 mode = 0;
 	uint32 key = 0;
 	uint32 a = 0;
 	std::wstring name;
-	List<Item> items;
+	List<QiItem> items;
 	HANDLE thread = 0;
 };
 
 struct QuickClick
 {
 	bool state = 0;
-	uint8 mode = 0;
+	uint32 mode = 0;
 	uint32 key = 0;
 	uint32 delay = 10;
 	HANDLE thread = 0;
@@ -158,15 +102,15 @@ struct FuncData
 struct QuickInputStruct
 {
 public:
+	bool state = 0;
 	List<Script> scripts;
 	FuncData fun;
 	SettingsData set;
-
-	HDC hdc = 0;
-	SIZE screen = { 0 };
-	bool state = 0;
 	LPVOID rec = 0;
 
+	HDC hdc = GetDC(0);
+	SIZE screen = System::screenSize();
+	
 private:
 	void (*SetHookState)(bool) = 0;
 
@@ -174,7 +118,6 @@ public:
 
 	void Ptrs(void (*SetHookState)(bool))
 	{
-		hdc = GetDC(0);
 		this->SetHookState = SetHookState;
 	}
 
@@ -184,37 +127,89 @@ public:
 	}
 };
 
-static POINT RelToAbs(POINT rel)
-{
-	SIZE scr = System::screenVSize();
-	return { (long)(((double)rel.x / ((double)scr.cx - 1.0)) * 10000.0), (long)(((double)rel.y / ((double)scr.cy - 1.0)) * 10000.0) };
-}
+static POINT RelToAbs(POINT rel) { return { (long)(((double)rel.x / ((double)Global::qi.screen.cx - 1.0)) * 10000.0), (long)(((double)rel.y / ((double)Global::qi.screen.cy - 1.0)) * 10000.0) }; }
 
-static POINT AbsToRel(POINT abs)
-{
-	SIZE scr = System::screenVSize();
-	return { (long)((double)scr.cx / 10000.0 * (double)abs.x), (long)((double)scr.cy / 10000.0 * (double)abs.y) };
-}
+static POINT AbsToRel(POINT abs) { return { (long)((double)Global::qi.screen.cx / 10000.0 * (double)abs.x), (long)((double)Global::qi.screen.cy / 10000.0 * (double)abs.y) }; }
 
-static void SaveItem(neb::CJsonObject& jItems, List<Item>& items)
+static void _stdcall SaveItem(neb::CJsonObject& jItems, List<QiItem>& items)
 {
 	for (uint32 u = 0; u < items.len(); u++)
 	{
 		neb::CJsonObject jItem;
-		uint32 u32cache = 0;
-		std::string scache;
-		u32cache = (uint32)items[u].type; jItem.Add(u32cache);
-		jItem.Add(items[u].a);
-		jItem.Add(items[u].b);
-		jItem.Add(items[u].c);
-		jItem.Add(items[u].d);
-		scache = String::toString(items[u].s); jItem.Add(scache);
+		neb::CJsonObject jNext;
 
-		if (items[u].type == 7 || items[u].type == 8)
+		std::string str = String::toString(items[u].action()->mark);
+		jItem.Add("mark", str);
+
+		switch (items[u].type())
 		{
-			neb::CJsonObject jNext;
-			SaveItem(jNext, items[u].next);
-			jItem.Add(jNext);
+		case QiAction::end:
+		{
+			jItem.Add("type", QiAction::end);
+		}
+		break;
+		case QiAction::delay:
+		{
+			jItem.Add("type", QiAction::delay);
+			QiDelay* action = QiDelayPtr(items[u]);
+			jItem.Add("ms", action->ms);
+			jItem.Add("ex", action->ex);
+		}
+		break;
+		case QiAction::key:
+		{
+			jItem.Add("type", QiAction::key);
+			QiKey* action = QiKeyPtr(items[u]);
+			jItem.Add("state", action->state);
+			jItem.Add("vk", action->vk);
+		}
+		break;
+		case QiAction::mouse:
+		{
+			jItem.Add("type", QiAction::mouse);
+			QiMouse* action = QiMousePtr(items[u]);
+			jItem.Add("state", action->state);
+			jItem.Add("x", action->x);
+			jItem.Add("y", action->y);
+			jItem.Add("ex", action->ex);
+		}
+		break;
+		case QiAction::text:
+		{
+			jItem.Add("type", QiAction::text);
+			QiText* action = QiTextPtr(items[u]);
+			jItem.Add("text", String::toString(action->str));
+		}
+		break;
+		case QiAction::color:
+		{
+			jItem.Add("type", QiAction::color);
+			QiColor* action = QiColorPtr(items[u]);
+			jItem.Add("state", action->state);
+			jItem.Add("move", action->move);
+			jItem.Add("left", (int32)action->rect.left);
+			jItem.Add("top", (int32)action->rect.top);
+			jItem.Add("right", (int32)action->rect.right);
+			jItem.Add("bottom", (int32)action->rect.bottom);
+			jItem.Add("rgbe", (uint32)action->rgbe);
+
+			SaveItem(jNext, action->next);
+			jItem.Add("next", jNext);
+		}
+		break;
+		case QiAction::loop:
+		{
+			jItem.Add("type", QiAction::loop);
+			QiLoop* action = QiLoopPtr(items[u]);
+			jItem.Add("count", action->count);
+
+			SaveItem(jNext, action->next);
+			jItem.Add("next", jNext);
+		}
+		break;
+		case QiAction::loopEnd:
+			jItem.Add("type", QiAction::loopEnd);
+			break;
 		}
 		jItems.Add(jItem);
 	}
@@ -224,108 +219,167 @@ static void SaveScript(Script& script)
 {
 	neb::CJsonObject json;
 	neb::CJsonObject jItems;
-	uint32 u32cache = 0;
 	SaveItem(jItems, script.items);
 	json.Add("state", script.state);
 	json.Add("block", script.block);
-	u32cache = script.mode; json.Add("mode", u32cache);
+	json.Add("mode", script.mode);
 	json.Add("key", script.key);
 	json.Add("a", script.a);
 	json.Add("items", jItems);
 
-	if (!File::FolderState(L"json"))
-	{
-		File::FolderCreate(L"json");
-	}
-
-	std::wstring path = L"json\\";
+	std::wstring path = L"macro\\";
 	path += script.name;
 	path += L".json";
+	File::FolderCreate(L"macro");
 	File::TextSave(path, String::String::toWString(json.ToString()), "chinese");
 }
 
-static void SaveJson(QuickInputStruct* qis)
+static void SaveJson()
 {
 	neb::CJsonObject cfg;
-	uint32 u32cache = 0;
 	std::string scache;
-	cfg.Add("key", qis->set.key);
-	cfg.Add("recKey", qis->set.recKey);
-	cfg.Add("showTips", qis->set.showTips);
-	cfg.Add("audFx", qis->set.audFx);
-	cfg.Add("minMode", qis->set.minMode);
-	cfg.Add("wndZoom", qis->set.wndZoom);
-	cfg.Add("quickClickKey", qis->fun.quickClick.key);
-	cfg.Add("quickClickState", qis->fun.quickClick.state);
-	cfg.Add("quickClickDelay", qis->fun.quickClick.delay);
-	u32cache = (uint32)qis->fun.quickClick.mode; cfg.Add("quickClickMode", u32cache);
-	cfg.Add("showClockKey", qis->fun.showClock.key);
-	cfg.Add("showClockState", qis->fun.showClock.state);
-	cfg.Add("wndActiveState", qis->fun.wndActive.state);
-	scache = String::toString(qis->fun.wndActive.name); cfg.Add("wndActiveName", scache);
+	cfg.Add("key", Global::qi.set.key);
+	cfg.Add("recKey", Global::qi.set.recKey);
+	cfg.Add("showTips", Global::qi.set.showTips);
+	cfg.Add("audFx", Global::qi.set.audFx);
+	cfg.Add("minMode", Global::qi.set.minMode);
+	cfg.Add("wndZoom", Global::qi.set.wndZoom);
+	cfg.Add("quickClickKey", Global::qi.fun.quickClick.key);
+	cfg.Add("quickClickState", Global::qi.fun.quickClick.state);
+	cfg.Add("quickClickDelay", Global::qi.fun.quickClick.delay);
+	cfg.Add("quickClickMode", Global::qi.fun.quickClick.mode);
+	cfg.Add("showClockKey", Global::qi.fun.showClock.key);
+	cfg.Add("showClockState", Global::qi.fun.showClock.state);
+	cfg.Add("wndActiveState", Global::qi.fun.wndActive.state);
+	scache = String::toString(Global::qi.fun.wndActive.name); cfg.Add("wndActiveName", scache);
 
 	File::TextSave(L"QuickInput.json", String::String::toWString(cfg.ToString()), "chinese");
 }
 
-static void LoadItem(const neb::CJsonObject jItems, List<Item>& items)
+static void _stdcall LoadItem(const neb::CJsonObject jItems, List<QiItem>& items)
 {
 	for (uint32 u = 0; u < jItems.GetArraySize(); u++)
 	{
-		Item item;
+		QiItem item;
 		neb::CJsonObject jItem;
+		neb::CJsonObject jNext;
 		jItems.Get(u, jItem);
-		uint32 u32cache;
-		std::string scache;
-		jItem.Get(0, u32cache); item.type = u32cache;
-		jItem.Get(1, item.a);
-		jItem.Get(2, item.b);
-		jItem.Get(3, item.c);
-		jItem.Get(4, item.d);
-		jItem.Get(5, scache); item.s = String::toWString(scache);
 
-		if (item.type == 7 || item.type == 8)
+		int32 i32 = 0;
+		jItem.Get("type", i32);
+
+		if (i32)
 		{
-			neb::CJsonObject jNext;
-			jItem.Get(6, jNext);
-			LoadItem(jNext, item.next);
+			switch (i32)
+			{
+			case QiAction::end:
+			{
+				item.Set(QiAction::end);
+			}
+			break;
+			case QiAction::delay:
+			{
+				item.Set(QiAction::delay);
+				jItem.Get("ms", QiDelayPtr(item)->ms);
+				jItem.Get("ex", QiDelayPtr(item)->ex);
+			}
+			break;
+			case QiAction::key:
+			{
+				item.Set(QiAction::key);
+				jItem.Get("state", QiKeyPtr(item)->state);
+				jItem.Get("vk", QiKeyPtr(item)->vk);
+			}
+			break;
+			case QiAction::mouse:
+			{
+				item.Set(QiAction::mouse);
+				jItem.Get("state", QiMousePtr(item)->state);
+				jItem.Get("x", QiMousePtr(item)->x);
+				jItem.Get("y", QiMousePtr(item)->y);
+				jItem.Get("ex", QiMousePtr(item)->ex);
+			}
+			break;
+			case QiAction::text:
+			{
+				item.Set(QiAction::text);
+				std::string str;
+				jItem.Get("text", str);
+				QiTextPtr(item)->str = String::toWString(str);
+			}
+			break;
+			case QiAction::color:
+			{
+				item.Set(QiAction::color);
+				jItem.Get("state", QiColorPtr(item)->state);
+				jItem.Get("move", QiColorPtr(item)->move);
+				jItem.Get("left", (int32&)(QiColorPtr(item)->rect.left));
+				jItem.Get("top", (int32&)(QiColorPtr(item)->rect.top));
+				jItem.Get("right", (int32&)(QiColorPtr(item)->rect.right));
+				jItem.Get("bottom", (int32&)(QiColorPtr(item)->rect.bottom));
+				jItem.Get("rgbe", (uint32&)(QiColorPtr(item)->rgbe));
+
+				jItem.Get("next", jNext);
+				LoadItem(jNext, QiColorPtr(item)->next);
+			}
+			break;
+			case QiAction::loop:
+			{
+				item.Set(QiAction::loop);
+				jItem.Get("count", QiLoopPtr(item)->count);
+
+				jItem.Get("next", jNext);
+				LoadItem(jNext, QiLoopPtr(item)->next);
+			}
+			break;
+			case QiAction::loopEnd:
+			{
+				item.Set(QiAction::loopEnd);
+			}
+				break;
+			}
+			
+			std::string str;
+			jItem.Get("mark", str);
+			item.action()->mark = String::toWString(str);
+
+			items.Add(item);
 		}
-		items.Add(item);
 	}
 }
 
-static void LoadJson(QuickInputStruct* qis)
+static void LoadJson()
 {
-	qis->scripts.Emp();
+	Global::qi.scripts.Emp();
 	neb::CJsonObject cfg(String::toString(File::TextLoad(L"QuickInput.json")));
-	uint32 u32cache = 0;
 	std::string scache;
-	cfg.Get("key", qis->set.key);
-	cfg.Get("recKey", qis->set.recKey);
-	cfg.Get("showTips", qis->set.showTips);
-	cfg.Get("audFx", qis->set.audFx);
-	cfg.Get("minMode", qis->set.minMode);
-	cfg.Get("wndZoom", qis->set.wndZoom);
-	cfg.Get("quickClickKey", qis->fun.quickClick.key);
-	cfg.Get("quickClickState", qis->fun.quickClick.state);
-	cfg.Get("quickClickDelay", qis->fun.quickClick.delay);
-	cfg.Get("quickClickMode", u32cache); qis->fun.quickClick.mode = (uint8)u32cache;
-	cfg.Get("showClockKey", qis->fun.showClock.key);
-	cfg.Get("showClockState", qis->fun.showClock.state);
-	cfg.Get("wndActiveState", qis->fun.wndActive.state);
-	cfg.Get("wndActiveName", scache); qis->fun.wndActive.name = String::toWString(scache);
+	cfg.Get("key", Global::qi.set.key);
+	cfg.Get("recKey", Global::qi.set.recKey);
+	cfg.Get("showTips", Global::qi.set.showTips);
+	cfg.Get("audFx", Global::qi.set.audFx);
+	cfg.Get("minMode", Global::qi.set.minMode);
+	cfg.Get("wndZoom", Global::qi.set.wndZoom);
+	cfg.Get("quickClickKey", Global::qi.fun.quickClick.key);
+	cfg.Get("quickClickState", Global::qi.fun.quickClick.state);
+	cfg.Get("quickClickDelay", Global::qi.fun.quickClick.delay);
+	cfg.Get("quickClickMode", Global::qi.fun.quickClick.mode);
+	cfg.Get("showClockKey", Global::qi.fun.showClock.key);
+	cfg.Get("showClockState", Global::qi.fun.showClock.state);
+	cfg.Get("wndActiveState", Global::qi.fun.wndActive.state);
+	cfg.Get("wndActiveName", scache); Global::qi.fun.wndActive.name = String::toWString(scache);
 
-	File::FindFileStruct files = File::FindFile(L"json\\*.json");
+	File::FindFileStruct files = File::FindFile(L"macro\\*.json");
 
 	for (uint32 u = 0; u < files.len(); u++) {
-		qis->scripts.Add();
-		Script& script = qis->scripts[qis->scripts.len() - 1];
+		Global::qi.scripts.Add();
+		Script& script = Global::qi.scripts.Get();
 		script.name = ((std::wstring)files[u].name).substr(0, wcslen(files[u].name) - 5);
 
-		neb::CJsonObject jScript(String::toString(File::TextLoad(((std::wstring)L"json\\" + files[u].name), "chinese")));
+		neb::CJsonObject jScript(String::toString(File::TextLoad(((std::wstring)L"macro\\" + files[u].name), "chinese")));
 
 		jScript.Get("state", script.state);
 		jScript.Get("block", script.block);
-		jScript.Get("mode", u32cache); script.mode = u32cache;
+		jScript.Get("mode", script.mode);
 		jScript.Get("key", script.key);
 		jScript.Get("a", script.a);
 
@@ -336,18 +390,18 @@ static void LoadJson(QuickInputStruct* qis)
 	}
 }
 
-static std::wstring NameFilter(QuickInputStruct* qis, std::wstring name)
+static std::wstring NameFilter(std::wstring name)
 {
 	for (uint32 n = 0;; n++)
 	{
-		for (uint32 nx = 0; nx < qis->scripts.len(); nx++)
+		for (uint32 nx = 0; nx < Global::qi.scripts.len(); nx++)
 		{
 			std::wstring find = name + L" " + String::toWString(n + 1);
-			if (qis->scripts[nx].name == find)
+			if (Global::qi.scripts[nx].name == find)
 			{
 				break;
 			}
-			if (nx >= qis->scripts.len() - 1)
+			if (nx >= Global::qi.scripts.len() - 1)
 			{
 				return find;
 			}
