@@ -49,6 +49,7 @@ public:
 			action.type = Action::_mouse;
 			action.mouse.x = pt.x;
 			action.mouse.y = pt.y;
+			actions->Add(action);
 		}
 
 		// key
@@ -57,6 +58,7 @@ public:
 		action.key.vk = vk;
 		if (state) action.key.state = Action::Key::down;
 		else action.key.state = Action::Key::up;
+		actions->Add(action);
 	}
 
 	bool State() const { return start; }
