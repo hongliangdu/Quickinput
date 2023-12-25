@@ -329,7 +329,7 @@ static void _stdcall LoadItem(const neb::CJsonObject jActions, Actions& actions)
 				LoadItem(jNext, action.loop.next);
 			}
 			break;
-			case Action::_loopEnd: action.type = Action::_loop; break;
+			case Action::_loopEnd: action.type = Action::_loopEnd; break;
 			default: action.type = Action::_none; break;
 			}
 
