@@ -27,7 +27,7 @@ namespace CG {
 		static void NanoSleep(LONGLONG hs)
 		{
 			HANDLE hTimer = 0;
-			LARGE_INTEGER liDueTime;
+			LARGE_INTEGER liDueTime = { 0 };
 			liDueTime.QuadPart = -(hs);
 
 			hTimer = CreateWaitableTimerW(0, 1, 0);
@@ -43,7 +43,7 @@ namespace CG {
 
 		static void Sleep(DWORD ms)
 		{
-			if (ms < 20) NanoSleep(ms * 10000);
+			if (ms < 20) NanoSleep((LONGLONG)(ms * 10000));
 			else if (ms) sleep(ms);
 		}
 

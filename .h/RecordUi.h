@@ -8,10 +8,10 @@ class RecordUi : public QDialog
 	Q_OBJECT
 
 public:
-	RecordUi(QWidget* main, List<QiItem>& items) : QDialog(main)
+	RecordUi(QWidget* main, Actions& actions) : QDialog(main)
 	{
 		this->main = main;
-		this->items = &items;
+		this->actions = &actions;
 		ui.setupUi(this);
 		setParent(0);
 		setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
@@ -23,57 +23,57 @@ public:
 		WidEvent();
 	}
 
-	void AddItems(byte vk, bool state, POINT pt = { 0 })
+	void AddItems(const byte vk, const bool state, POINT pt = { 0 })
 	{
+		Action action;
+
 		if (!begin)
 		{
 			tim = clock();
 			begin = 1;
 		}
-
-		// delay
-		items->Add(QiItem(QiAction::delay));
-		QiDelayPtr(items->Get())->ms = clock() - tim;
-		tim = clock();
+		else
+		{
+			// delay
+			action.type = Action::_delay;
+			action.delay.ms = clock() - tim;
+			actions->Add(action);
+			tim = clock();
+		}
 
 		// pos
 		if (Input::Type(vk))
 		{
-			items->Add(QiItem(QiAction::mouse));
-			POINT abs = RelToAbs(pt);
-			QiMousePtr(items->Get())->x = abs.x;
-			QiMousePtr(items->Get())->y = abs.y;
+			pt = RelToAbs(pt);
+			action.Emp();
+			action.type = Action::_mouse;
+			action.mouse.x = pt.x;
+			action.mouse.y = pt.y;
 		}
 
 		// key
-		items->Add(QiItem(QiAction::key));
-		QiKeyPtr(QiItem(QiAction::key))->vk = vk;
-		if (state) QiKeyPtr(QiItem(QiAction::key))->state= QiKey::down;
-		else QiKeyPtr(QiItem(QiAction::key))->state= QiKey::up;
+		action.Emp();
+		action.type = Action::_key;
+		action.key.vk = vk;
+		if (state) action.key.state = Action::Key::down;
+		else action.key.state = Action::Key::up;
 	}
 
-	bool State() { return start; }
+	bool State() const { return start; }
 
 	void EndRec()
 	{
-		if (start)
-		{
-			items->Add();
-			items->Add();
-		}
-		else
-		{
-			items->Emp();
-		}
+		click = 1;
 		OnBnStart();
+		click = 0;
 	}
 
 private:
 	Ui::RecordUiClass ui;
 	QWidget* main = 0;
-	List<QiItem>* items = 0;
+	Actions* actions = 0;
 	long long tim = 0;
-	bool start = 0, begin = 0;
+	bool start = 0, begin = 0, click = 0;
 
 	void WidEvent()
 	{
@@ -92,12 +92,7 @@ public slots:
 		if (start)
 		{
 			Global::qi.rec = 0;
-			items->Del();
-			items->Del();
-			items->Del();
-			items->Del();
-			items->Del();
-			items->Del();
+			if (!click) actions->DelBack(6);
 
 			Global::qi.scripts.Get().name = NameFilter(L"录制");
 			SaveScript(Global::qi.scripts.Get());
@@ -106,7 +101,7 @@ public slots:
 		else
 		{
 			TipsWindow::Hide();
-			items->Emp();
+			actions->clear();
 			ui.bnStart->setText(UI::rcStop);
 			start = 1;
 			Global::qi.rec = this;
@@ -117,7 +112,7 @@ public slots:
 	{
 		TipsWindow::Hide();
 		Global::qi.rec = 0;
-		Global::qi.scripts.Del();
+		Global::qi.scripts.DelBack();
 		main->show();
 		close();
 	}

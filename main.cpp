@@ -6,13 +6,7 @@
 
 void InitUI(bool zoom)
 {
-	if (zoom)
-	{
-		if (System::screenSize().cy > 1200)
-		{
-			qputenv("QT_SCALE_FACTOR", QByteArray::number(System::screenZoomRote(), 10, 1));
-		}
-	}
+	if (zoom && System::screenSize().cy > 1200) qputenv("QT_SCALE_FACTOR", QByteArray::number(System::screenZoomRote(), 10, 1));
 
 	{
 		if (System::Version().dwMajorVersion >= 10)
@@ -72,103 +66,106 @@ void InitUI(bool zoom)
 	}
 }
 
-uint8 ExcItem(QiItem& item)
+uint8 ExcItem(Action& item)
 {
 	if (!Global::qi.state) return 1;
-	switch (item.type())
+	switch (item.type)
 	{
-	case QiAction::end:
-		return 1;
-	case QiAction::delay:
-		if (QiDelayPtr(item)->ex)
+	case Action::_end: return 1;
+
+	case Action::_delay:
+	{
+		if (item.delay.ex)
 		{
 			int32 ms;
-			ms = QiDelayPtr(item)->ms + (Rand(QiDelayPtr(item)->ex, QiDelayPtr(item)->ex - (QiDelayPtr(item)->ex * 2)));
+			ms = item.delay.ms + (Rand(item.delay.ex, item.delay.ex - (item.delay.ex * 2)));
 			if (ms < 0) ms = 0;
 			Thread::Sleep(ms);
 		}
-		else Thread::Sleep(QiDelayPtr(item)->ms);
-		break;
-	case QiAction::key:
-		if (QiKeyPtr(item)->state == QiKey::down)
-		{
-			Input::State(QiKeyPtr(item)->vk, 1, 214);
-		}
-		else if (QiKeyPtr(item)->state == QiKey::up)
-		{
-			Input::State(QiKeyPtr(item)->vk, 0, 214);
-		}
-		else if (QiKeyPtr(item)->state == QiKey::click)
+		else Thread::Sleep(item.delay.ms);
+		return 0;
+	}
+
+	case Action::_key:
+	{
+		if (item.key.state == Action::Key::up) Input::State(item.key.vk, 0, 214);
+		else if (item.key.state == Action::Key::down) Input::State(item.key.vk, 1, 214);
+		else if (item.key.state == Action::Key::click)
 		{
 			Thread::Sleep(10);
-			Input::State(QiKeyPtr(item)->vk, 1, 214);
+			Input::State(item.key.vk, 1, 214);
 			Thread::Sleep(10);
-			Input::State(QiKeyPtr(item)->vk, 0, 214);
+			Input::State(item.key.vk, 0, 214);
 			Thread::Sleep(10);
 		}
-		break;
-	case QiAction::mouse:
+		return 0;
+	}
+
+	case Action::_mouse:
+	{
 		Thread::Sleep(10);
-		if (QiMousePtr(item)->ex)
+		if (item.mouse.ex)
 		{
 			POINT pt = { 0 };
-			pt.x = QiMousePtr(item)->x + (Rand(QiMousePtr(item)->ex, (~QiMousePtr(item)->ex + 1)));
-			pt.y = QiMousePtr(item)->y + (Rand(QiMousePtr(item)->ex, (~QiMousePtr(item)->ex + 1)));
-			if (QiMousePtr(item)->state == QiMouse::pos) Input::MoveToA(pt.x * 6.5535, pt.y * 6.5535);
-			else Input::Move(pt.x, pt.y);
+			pt.x = item.mouse.x + (Rand(item.mouse.ex, (~item.mouse.ex + 1)));
+			pt.y = item.mouse.y + (Rand(item.mouse.ex, (~item.mouse.ex + 1)));
+			if (item.mouse.move) Input::Move(pt.x, pt.y);
+			else Input::MoveToA(pt.x * 6.5535, pt.y * 6.5535);
 		}
 		else {
-			if (QiMousePtr(item)->state == QiMouse::pos) Input::MoveToA(QiMousePtr(item)->x * 6.5535, QiMousePtr(item)->y * 6.5535);
-			else Input::Move(QiMousePtr(item)->y, QiMousePtr(item)->y);
+			if (item.mouse.move) Input::Move(item.mouse.x, item.mouse.y);
+			else Input::MoveToA(item.mouse.x * 6.5535, item.mouse.y * 6.5535);
 		}
 		Thread::Sleep(10);
-		break;
-	case QiAction::text:
-		System::ClipBoardText(QiTextPtr(item)->str.c_str());
-		break;
-	case QiAction::color:
+		return 0;
+	}
+
+	case Action::_text: System::ClipBoardText(item.text.str.str); return 0;
+
+	case Action::_color:
 	{
 		RECT rect = { 0 };
 		POINT pt = { 0 };
-		pt = AbsToRel({ QiColorPtr(item)->rect.left, QiColorPtr(item)->rect.top });
+		pt = AbsToRel({ item.color.rect.left, item.color.rect.top });
 		rect.left = pt.x, rect.top = pt.y;
-		pt = AbsToRel({ QiColorPtr(item)->rect.right, QiColorPtr(item)->rect.bottom });
+		pt = AbsToRel({ item.color.rect.right, item.color.rect.bottom });
 		rect.right = pt.x, rect.bottom = pt.y;
-		POINT pos = Color::FindOr(Global::qi.hdc, rect, QiColorPtr(item)->rgbe, GetAValue(QiColorPtr(item)->rgbe));
-		if (QiColorPtr(item)->state == QiColor::find)
+		POINT pos = Color::FindOr(Global::qi.hdc, rect, item.color.rgbe, GetAValue(item.color.rgbe));
+		if (item.color.unfind)
 		{
-			if (pos.x)
+			if (!pos.x)
 			{
-				for (uint32 u = 0; u < QiColorPtr(item)->next.len(); u++)
+				for (uint32 u = 0; u < item.color.next.size(); u++)
 				{
-					uint8 r = ExcItem(QiColorPtr(item)->next[u]);
+					uint8 r = ExcItem(item.color.next[u]);
 					if (r) return r;
 				}
-				if (QiColorPtr(item)->move == 1) Input::MoveTo(pos.x, pos.y);
 			}
 		}
 		else
 		{
-			if (!pos.x)
+			if (pos.x)
 			{
-				for (uint32 u = 0; u < QiColorPtr(item)->next.len(); u++)
+				for (uint32 u = 0; u < item.color.next.size(); u++)
 				{
-					uint8 r = ExcItem(QiColorPtr(item)->next[u]);
+					uint8 r = ExcItem(item.color.next[u]);
 					if (r) return r;
 				}
+				if (item.color.move == 1) Input::MoveTo(pos.x, pos.y);
 			}
 		}
-		break;
+		return 0;
 	}
-	case QiAction::loop:
+
+	case Action::_loop:
 	{
-		if (QiLoopPtr(item)->count)
+		if (item.loop.count)
 		{
-			for (uint32 u = 0; u < QiLoopPtr(item)->count; u++)
+			for (uint32 u = 0; u < item.loop.count; u++)
 			{
-				for (uint32 ux = 0; ux < QiLoopPtr(item)->next.len(); ux++)
+				for (uint32 ux = 0; ux < item.loop.next.size(); ux++)
 				{
-					uint8 r = ExcItem(QiLoopPtr(item)->next[u]);
+					uint8 r = ExcItem(item.loop.next[u]);
 					if (r == 1) return r;
 					else if (r == 2) return 0;
 				}
@@ -178,18 +175,18 @@ uint8 ExcItem(QiItem& item)
 		{
 			while (1)
 			{
-				for (uint32 u = 0; u < QiLoopPtr(item)->next.len(); u++)
+				for (uint32 u = 0; u < item.loop.next.size(); u++)
 				{
-					uint8 r = ExcItem(QiLoopPtr(item)->next[u]);
+					uint8 r = ExcItem(item.loop.next[u]);
 					if (r == 1) return 1;
 					else if (r == 2) return 0;
 				}
 			}
 		}
-		break;
+		return 0;
 	}
-	case QiAction::loopEnd:
-		return 2;
+
+	case Action::_loopEnd: return 2;
 	}
 	return 0;
 }
@@ -225,9 +222,9 @@ DWORD CALLBACK ThreadMacro(LPVOID lParam)
 			n++;
 			if (n > count) break;
 		}
-		for (uint32 n = 0; n < Global::qi.scripts[pos].items.len() && Global::qi.state; n++)
+		for (uint32 n = 0; n < Global::qi.scripts[pos].actions.size() && Global::qi.state; n++)
 		{
-			if (ExcItem(Global::qi.scripts[pos].items[n]))
+			if (ExcItem(Global::qi.scripts[pos].actions[n]))
 			{
 				Global::qi.scripts[pos].thread = 0;
 				return 0;
@@ -296,7 +293,7 @@ void SwitchKey(BYTE vk, bool state)
 		else
 		{
 			Global::qi.state = 1;
-			Global::qi.screen = System::screenSize();
+			Global::qi.ReScreen();
 			TipsWindow::screen = Global::qi.screen;
 
 			if (Global::qi.fun.wndActive.state) Global::qi.fun.wndActive.thread = Thread::Start(ThreadWndActive);
@@ -367,7 +364,7 @@ void TriggerKey(BYTE vk, bool state)
 		}
 	}
 
-	for (uint32 n = 0; n < Global::qi.scripts.len(); n++)
+	for (uint32 n = 0; n < Global::qi.scripts.size(); n++)
 	{
 		if (Global::qi.scripts[n].state)
 		{
@@ -479,7 +476,8 @@ InputHookProc()
 		{
 			if (Global::qi.rec)
 			{
-				if (((RecordUi*)Global::qi.rec)->State()) ((RecordUi*)Global::qi.rec)->AddItems(Input::Convert(vk), state);
+				if (Global::qi.set.recKey == vk) return 1;
+				else if (((RecordUi*)Global::qi.rec)->State()) ((RecordUi*)Global::qi.rec)->AddItems(Input::Convert(vk), state, msPt);
 			}
 			else
 			{
@@ -491,8 +489,9 @@ InputHookProc()
 		{
 			if (Global::qi.rec)
 			{
-				if (((RecordUi*)Global::qi.rec)->State()) ((RecordUi*)Global::qi.rec)->AddItems(Input::Convert(vk), state);
 				if (Global::qi.set.recKey == Input::Convert(vk)) ((RecordUi*)Global::qi.rec)->EndRec();
+				if (Global::qi.set.recKey == vk) return 1;
+				else if (((RecordUi*)Global::qi.rec)->State()) ((RecordUi*)Global::qi.rec)->AddItems(Input::Convert(vk), state, msPt);
 			}
 			else
 			{
@@ -526,14 +525,14 @@ int main(int argc, char* argv[])
 
 	timeBeginPeriod(1);
 
-	Global::qi.Ptrs(SetHookState);
-	Global::qi.screen = System::screenSize();
-	TipsWindow::screen = Global::qi.screen;
-	
 	LoadJson();
 	InitUI(!Global::qi.set.wndZoom);
-
 	QApplication app(argc, argv);
+
+	Global::qi.Ptrs(SetHookState);
+	Global::qi.ReScreen();
+	TipsWindow::screen = Global::qi.screen;
+
 	MainUi wnd;
 
 	if (!Global::qi.set.minMode)

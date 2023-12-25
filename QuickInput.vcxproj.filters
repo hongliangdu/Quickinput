@@ -95,6 +95,12 @@
     <QtMoc Include=".h\MainUi.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include=".h\QPointView.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include=".h\QRectView.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include=".h\QuickInputDef.h">
@@ -103,7 +109,7 @@
     <ClInclude Include=".h\TipsWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include=".h\QiItem.h">
+    <ClInclude Include=".h\Action.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="static.h">

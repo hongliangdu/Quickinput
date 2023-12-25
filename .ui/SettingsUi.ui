@@ -282,7 +282,7 @@
          <string notr="true">font-family:&quot;Microsoft YaHei&quot;;font-size:14px;</string>
         </property>
         <property name="text">
-         <string>开关音效</string>
+         <string>开关音效（按下触发键时播放）</string>
         </property>
        </widget>
       </item>
@@ -355,7 +355,7 @@
          <string notr="true">font-family:&quot;Microsoft YaHei&quot;;font-size:14px;</string>
         </property>
         <property name="text">
-         <string>最小化到工具栏</string>
+         <string>默认隐藏（在任务栏右侧显示）</string>
         </property>
        </widget>
       </item>

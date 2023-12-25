@@ -1,142 +1,89 @@
 #pragma once
-
+#include <vector>
 #include "base.h"
+#pragma warning(disable:4700)
 
 namespace CG
 {
-	template <class ITEM>
-	class List
+	template<class T>
+	class List : public std::vector<T>
 	{
-	private:
-		ITEM* item = 0;
-		uint32 length = 0;
-
 	public:
-		ITEM& operator[](const uint32 pos) const
+		T& Get(uint32 p = uint32Max)
 		{
-			if (pos >= length && length) return item[length - 1];
-			return item[pos];
+			if (std::vector<T>::size())
+			{
+				if (p >= std::vector<T>::size()) p = std::vector<T>::size() - 1;
+				return std::vector<T>::operator[](p);
+			}
+			T t;
+			return t;
 		}
-		ITEM& Get(const uint32 pos = uint32Max) const
+		void AddNull(const uint32 count = 1)
 		{
-			if (pos >= length && length) return item[length - 1];
-			return item[pos];
+			T t;
+			Add(t, count);
 		}
-
-		void Add()
+		void Add(const T& t, const uint32 count = 1)
 		{
-			ITEM none;
-			Add(none);
+			for (uint32 c = 0; c < count; c++) std::vector<T>::push_back(t);
 		}
-		void Add(const ITEM& val)
+		void InsNull(const uint32 p, const uint32 count = 1)
 		{
-			ITEM* cache = new ITEM[length + 1];
-			for (uint32 u = 0; u < length; u++) { cache[u] = item[u]; }
-			if (item) { delete[] item; item = 0; }
-			cache[length] = val;
-			item = cache;
-			length++;
+			T t;
+			Ins(p, t, count);
 		}
-
-		bool Ins(uint32 pos)
+		void Ins(uint32 p, const T& t)
 		{
-			ITEM none;
-			return Ins(pos, none);
+			if (p > std::vector<T>::size()) p = std::vector<T>::size();
+			std::vector<T>::insert(std::vector<T>::begin() + p, t);
 		}
-		bool Ins(uint32 pos, const ITEM& val)
+		void Ins(uint32 p, const T& t, const uint32 count)
 		{
-			if (pos > length) return 0;
-			ITEM* cache = new ITEM[length + 1];
-
-			for (uint32 u = 0; u < pos && u < length; u++) cache[u] = item[u];
-			cache[pos] = val;
-			for (uint32 u = pos; u < length; u++) cache[u + 1] = item[u];
-
-			if (item) { delete[] item; item = 0; }
-			item = cache;
-			length++;
+			if (p > std::vector<T>::size()) p = std::vector<T>::size();
+			std::vector<T>::insert(std::vector<T>::begin() + p, count, t);
+		}
+		bool Del(uint32 p)
+		{
+			if (p >= std::vector<T>::size()) return 0;
+			std::vector<T>::erase(std::vector<T>::begin() + p);
 			return 1;
 		}
-
+		bool DelBack(uint32 count = 1, uint32 p = uint32Max)
+		{
+			if (std::vector<T>::size() == 0) return 0;
+			if (p >= std::vector<T>::size()) p = std::vector<T>::size();
+			if (count > p) count = p;
+			std::vector<T>::erase(std::vector<T>::begin() + (p - count), std::vector<T>::begin() + p);
+			return 1;
+		}
+		bool DelFront(uint32 count = 1, uint32 p = 0)
+		{
+			if (std::vector<T>::size() == 0) return 0;
+			if (p >= std::vector<T>::size()) p = std::vector<T>::size();
+			if ((p + count) >= std::vector<T>::size()) count = std::vector<T>::size() - p;
+			std::vector<T>::erase(std::vector<T>::begin() + p, std::vector<T>::begin() + (p + count));
+			return 1;
+		}
 		bool Swp(uint32 p1, uint32 p2)
 		{
-			if (p1 > (length - 1) || p2 > (length - 1)) return 0;
-			if (p1 == p2) return 1;
-
-			ITEM cache;
-			cache = item[p1];
-			item[p1] = item[p2];
-			item[p2] = cache;
-			return 1;
+			if (p1 >= std::vector<T>::size() || p2 >= std::vector<T>::size()) return 0;
+			std::swap(std::vector<T>::operator[](p1), std::vector<T>::operator[](p2));
 		}
-
-		bool Mov(uint32 before, uint32 after)
+		bool Mov(uint32 p1, uint32 p2)
 		{
-			if (before > (length - 1) || after > (length - 1)) return 0;
-
-			if (before > after)
+			if (p1 >= std::vector<T>::size() || p2 >= std::vector<T>::size()) return 0;
+			if (p1 < p2)
 			{
-				for (uint32 u = before; u > after; u--)
-				{
-					Swp(u, u - 1);
-				}
+				for (uint32 p = p1; p < p2; p++) Swp(p, p + 1);
 				return 1;
 			}
-			else if (before < after)
+			else if (p1 > p2)
 			{
-				for (uint32 u = before; u < after; u++)
-				{
-					Swp(u, u + 1);
-				}
+				for (uint32 p = p1; p > p2; p--) Swp(p, p - 1);
 				return 1;
 			}
-			return 1;
+			return 0;
 		}
-
-		void Cpy(List& list, uint32 begin = 0, uint32 end = uint32Max)
-		{
-			Emp();
-			for (; begin <= end && begin < list.len(); begin++) Add(list.item[begin]);
-		}
-
-		void Cut(List& list, uint32 begin = 0, uint32 end = uint32Max)
-		{
-			for (; begin <= end && begin < list.len(); begin++) Add(list.item[begin]);
-		}
-
-		bool Del(uint32 pos = uint32Max)
-		{
-			if (length == 0) return 1;
-
-			if ((length - 1) == 0) Emp();
-			else
-			{
-				if (pos > (length - 1)) pos = (length - 1);
-
-				ITEM* cache = new ITEM[length - 1];
-				for (uint32 u = 0; u < length; u++)
-				{
-					if (u < pos) {
-						cache[u] = item[u];
-					}
-					else if (u > pos) {
-						cache[u - 1] = item[u];
-					}
-				}
-
-				if (item) { delete[] item; item = 0; }
-				item = cache;
-				length--;
-			}
-			return 1;
-		}
-
-		void Emp()
-		{
-			if (item) { delete[] item; item = 0; }
-			length = 0;
-		}
-
-		uint32 len() const { return length; }
 	};
 }

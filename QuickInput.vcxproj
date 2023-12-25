@@ -17,7 +17,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{16B7A93B-BF34-42C8-8E20-9D8FD46546E6}</ProjectGuid>
+    <ProjectGuid>{F25A234B-7F84-44E8-ADE1-627441CE0A15}</ProjectGuid>
     <Keyword>QtVS_v304</Keyword>
     <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'">10.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">10.0</WindowsTargetPlatformVersion>
@@ -129,11 +129,13 @@
     <QtMoc Include=".h\MainUi.h" />
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include=".h\QPointView.h" />
+    <QtMoc Include=".h\QRectView.h" />
     <ClInclude Include="static.h" />
     <QtMoc Include=".h\QColorSelection.h" />
     <QtMoc Include=".h\QPositionSelection.h" />
     <QtMoc Include=".h\QSelectionBox.h" />
-    <ClInclude Include=".h\QiItem.h" />
+    <ClInclude Include=".h\Action.h" />
     <ClInclude Include=".h\TipsWindow.h" />
     <QtMoc Include=".h\EditUi.h" />
     <QtMoc Include=".h\MacroUi.h" />

@@ -23,7 +23,7 @@ namespace CG {
 
 		// include .exe, return pid
 		static DWORD State(const std::wstring exe) {
-			PROCESSENTRY32W pe;
+			PROCESSENTRY32W pe = { 0 };
 			pe.dwSize = sizeof(PROCESSENTRY32W);
 			HANDLE hProcess = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
@@ -48,7 +48,7 @@ namespace CG {
 			return pids;
 		}
 
-		static HANDLE Start(const std::wstring cmdLine, const bool showWindow = 1, const bool child = 0, std::wstring workPath = L"") {
+		static HANDLE Start(const std::wstring cmdLine, const bool showWindow = 1, const DWORD creationFlags = CREATE_NEW_CONSOLE, std::wstring workPath = L"") {
 			STARTUPINFO si = { 0 };
 			si.cb = sizeof(STARTUPINFO);
 			PROCESS_INFORMATION pi = { 0 };
@@ -58,23 +58,23 @@ namespace CG {
 			if (workPath == L"")
 			{
 				File::CmdLine cmdLines = File::toCmdLine(cmdLine);
-				if (cmdLines.len()) workPath = File::PathLast(cmdLines[0]);
+				if (cmdLines.size()) workPath = File::PathLast(cmdLines[0]);
 				if (!File::FolderState(workPath)) workPath = runPath();
 			}
 			if (!showWindow) {
 				si.dwFlags = STARTF_USESHOWWINDOW;
 				si.wShowWindow = SW_HIDE;
 			}
-			if (CreateProcessW(0, cmd, 0, 0, 0, 0, 0, workPath.c_str(), &si, &pi)) {
-				if (child) return pi.hProcess;
-				else CloseHandle(&pi.hProcess), CloseHandle(&pi.hThread);
+			if (CreateProcessW(0, cmd, 0, 0, 0, creationFlags, 0, workPath.c_str(), &si, &pi)) {
+				CloseHandle(&pi.hThread);
+				CloseHandle(&pi.hProcess);
 			}
 			delete[] cmd;
 			return 0;
 		}
 
 		static void Close(const std::wstring exe) {
-			PROCESSENTRY32W pe;
+			PROCESSENTRY32W pe = { 0 };
 			pe.dwSize = sizeof(PROCESSENTRY32W);
 			HANDLE hProcShot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 

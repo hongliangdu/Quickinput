@@ -1,8 +1,10 @@
 ﻿#pragma once
 #include <QString>
 #include <QFont>
+#include <qdesktopwidget.h>
+#include <qapplication.h>
 #include "TipsWindow.h"
-#include "QiItem.h"
+#include "Action.h"
 #include "../static.h"
 
 struct QuickInputStruct;
@@ -41,11 +43,7 @@ struct UI {
 
 struct Script
 {
-	enum {
-		sw,
-		down,
-		up
-	};
+	enum { sw, down, up };
 	bool state = 0;
 	bool block = 0;
 	bool k1 = 0, k2 = 0, active = 0;
@@ -53,9 +51,10 @@ struct Script
 	uint32 key = 0;
 	uint32 a = 0;
 	std::wstring name;
-	List<QiItem> items;
+	Actions actions;
 	HANDLE thread = 0;
 };
+typedef List<Script> Scripts;
 
 struct QuickClick
 {
@@ -103,18 +102,27 @@ struct QuickInputStruct
 {
 public:
 	bool state = 0;
-	List<Script> scripts;
+	Scripts scripts;
 	FuncData fun;
 	SettingsData set;
 	LPVOID rec = 0;
 
 	HDC hdc = GetDC(0);
 	SIZE screen = System::screenSize();
-	
+	SIZE vscreen = System::screenVSize();
+
 private:
 	void (*SetHookState)(bool) = 0;
 
 public:
+
+	void ReScreen()
+	{
+		screen = System::screenSize();
+		QRect qr = QApplication::desktop()->screenGeometry();
+		vscreen.cx = qr.width();
+		vscreen.cy = qr.height();
+	}
 
 	void Ptrs(void (*SetHookState)(bool))
 	{
@@ -131,101 +139,96 @@ static POINT RelToAbs(POINT rel) { return { (long)(((double)rel.x / ((double)Glo
 
 static POINT AbsToRel(POINT abs) { return { (long)((double)Global::qi.screen.cx / 10000.0 * (double)abs.x), (long)((double)Global::qi.screen.cy / 10000.0 * (double)abs.y) }; }
 
-static void _stdcall SaveItem(neb::CJsonObject& jItems, List<QiItem>& items)
+static POINT AbsToVRel(POINT abs) { return { (long)((double)Global::qi.vscreen.cx / 10000.0 * (double)abs.x), (long)((double)Global::qi.vscreen.cy / 10000.0 * (double)abs.y) }; }
+
+static void _stdcall SaveItem(neb::CJsonObject& jActions, Actions& actions)
 {
-	for (uint32 u = 0; u < items.len(); u++)
+	for (uint32 u = 0; u < actions.size(); u++)
 	{
 		neb::CJsonObject jItem;
 		neb::CJsonObject jNext;
 
-		std::string str = String::toString(items[u].action()->mark);
+		std::string str = String::toString(actions[u].mark);
 		jItem.Add("mark", str);
 
-		switch (items[u].type())
+		switch (actions[u].type)
 		{
-		case QiAction::end:
+		case Action::_end:
 		{
-			jItem.Add("type", QiAction::end);
+			jItem.Add("type", Action::_end);
 		}
 		break;
-		case QiAction::delay:
+		case Action::_delay:
 		{
-			jItem.Add("type", QiAction::delay);
-			QiDelay* action = QiDelayPtr(items[u]);
-			jItem.Add("ms", action->ms);
-			jItem.Add("ex", action->ex);
+			jItem.Add("type", Action::_delay);
+			jItem.Add("ms", actions[u].delay.ms);
+			jItem.Add("ex", actions[u].delay.ex);
 		}
 		break;
-		case QiAction::key:
+		case Action::_key:
 		{
-			jItem.Add("type", QiAction::key);
-			QiKey* action = QiKeyPtr(items[u]);
-			jItem.Add("state", action->state);
-			jItem.Add("vk", action->vk);
+			jItem.Add("type", Action::_key);
+			jItem.Add("state", actions[u].key.state);
+			jItem.Add("vk", actions[u].key.vk);
 		}
 		break;
-		case QiAction::mouse:
+		case Action::_mouse:
 		{
-			jItem.Add("type", QiAction::mouse);
-			QiMouse* action = QiMousePtr(items[u]);
-			jItem.Add("state", action->state);
-			jItem.Add("x", action->x);
-			jItem.Add("y", action->y);
-			jItem.Add("ex", action->ex);
+			jItem.Add("type", Action::_mouse);
+			jItem.Add("move", actions[u].mouse.move);
+			jItem.Add("x", actions[u].mouse.x);
+			jItem.Add("y", actions[u].mouse.y);
+			jItem.Add("ex", actions[u].mouse.ex);
 		}
 		break;
-		case QiAction::text:
+		case Action::_text:
 		{
-			jItem.Add("type", QiAction::text);
-			QiText* action = QiTextPtr(items[u]);
-			jItem.Add("text", String::toString(action->str));
+			jItem.Add("type", Action::_text);
+			jItem.Add("text", String::toString(actions[u].text.str.str));
 		}
 		break;
-		case QiAction::color:
+		case Action::_color:
 		{
-			jItem.Add("type", QiAction::color);
-			QiColor* action = QiColorPtr(items[u]);
-			jItem.Add("state", action->state);
-			jItem.Add("move", action->move);
-			jItem.Add("left", (int32)action->rect.left);
-			jItem.Add("top", (int32)action->rect.top);
-			jItem.Add("right", (int32)action->rect.right);
-			jItem.Add("bottom", (int32)action->rect.bottom);
-			jItem.Add("rgbe", (uint32)action->rgbe);
-
-			SaveItem(jNext, action->next);
+			jItem.Add("type", Action::_color);
+			jItem.Add("unfind", actions[u].color.unfind);
+			jItem.Add("move", actions[u].color.move);
+			jItem.Add("left", (int32)actions[u].color.rect.left);
+			jItem.Add("top", (int32)actions[u].color.rect.top);
+			jItem.Add("right", (int32)actions[u].color.rect.right);
+			jItem.Add("bottom", (int32)actions[u].color.rect.bottom);
+			jItem.Add("rgbe", (uint32)actions[u].color.rgbe);
+			SaveItem(jNext, actions[u].color.next);
 			jItem.Add("next", jNext);
 		}
 		break;
-		case QiAction::loop:
+		case Action::_loop:
 		{
-			jItem.Add("type", QiAction::loop);
-			QiLoop* action = QiLoopPtr(items[u]);
-			jItem.Add("count", action->count);
-
-			SaveItem(jNext, action->next);
+			jItem.Add("type", Action::_loop);
+			jItem.Add("count", actions[u].loop.count);
+			SaveItem(jNext, actions[u].loop.next);
 			jItem.Add("next", jNext);
 		}
 		break;
-		case QiAction::loopEnd:
-			jItem.Add("type", QiAction::loopEnd);
+		case Action::_loopEnd:
+			jItem.Add("type", Action::_loopEnd);
 			break;
 		}
-		jItems.Add(jItem);
+		jActions.Add(jItem);
 	}
 }
 
 static void SaveScript(Script& script)
 {
 	neb::CJsonObject json;
-	neb::CJsonObject jItems;
-	SaveItem(jItems, script.items);
+	neb::CJsonObject jActions;
+	SaveItem(jActions, script.actions);
+	json.Add("documen_ charset", std::string("GB2312"));
 	json.Add("state", script.state);
 	json.Add("block", script.block);
 	json.Add("mode", script.mode);
 	json.Add("key", script.key);
 	json.Add("a", script.a);
-	json.Add("items", jItems);
+	json.Add("actions", jActions);
 
 	std::wstring path = L"macro\\";
 	path += script.name;
@@ -238,6 +241,7 @@ static void SaveJson()
 {
 	neb::CJsonObject cfg;
 	std::string scache;
+	cfg.Add("document_charset", std::string("GB2312"));
 	cfg.Add("key", Global::qi.set.key);
 	cfg.Add("recKey", Global::qi.set.recKey);
 	cfg.Add("showTips", Global::qi.set.showTips);
@@ -256,101 +260,90 @@ static void SaveJson()
 	File::TextSave(L"QuickInput.json", String::String::toWString(cfg.ToString()), "chinese");
 }
 
-static void _stdcall LoadItem(const neb::CJsonObject jItems, List<QiItem>& items)
+static void _stdcall LoadItem(const neb::CJsonObject jActions, Actions& actions)
 {
-	for (uint32 u = 0; u < jItems.GetArraySize(); u++)
+	for (uint32 u = 0; u < jActions.GetArraySize(); u++)
 	{
-		QiItem item;
+		Action action;
 		neb::CJsonObject jItem;
 		neb::CJsonObject jNext;
-		jItems.Get(u, jItem);
+		jActions.Get(u, jItem);
 
 		int32 i32 = 0;
 		jItem.Get("type", i32);
-
 		if (i32)
 		{
 			switch (i32)
 			{
-			case QiAction::end:
+			case Action::_end: action.type = Action::_end; break;
+			case Action::_delay:
 			{
-				item.Set(QiAction::end);
+				action.type = Action::_delay;
+				jItem.Get("ms", action.delay.ms);
+				jItem.Get("ex", action.delay.ex);
 			}
 			break;
-			case QiAction::delay:
+			case Action::_key:
 			{
-				item.Set(QiAction::delay);
-				jItem.Get("ms", QiDelayPtr(item)->ms);
-				jItem.Get("ex", QiDelayPtr(item)->ex);
+				action.type = Action::_key;
+				jItem.Get("state", action.key.state);
+				jItem.Get("vk", action.key.vk);
 			}
 			break;
-			case QiAction::key:
+			case Action::_mouse:
 			{
-				item.Set(QiAction::key);
-				jItem.Get("state", QiKeyPtr(item)->state);
-				jItem.Get("vk", QiKeyPtr(item)->vk);
+				action.type = Action::_mouse;
+				jItem.Get("move", action.mouse.move);
+				jItem.Get("x", action.mouse.x);
+				jItem.Get("y", action.mouse.y);
+				jItem.Get("ex", action.mouse.ex);
 			}
 			break;
-			case QiAction::mouse:
+			case Action::_text:
 			{
-				item.Set(QiAction::mouse);
-				jItem.Get("state", QiMousePtr(item)->state);
-				jItem.Get("x", QiMousePtr(item)->x);
-				jItem.Get("y", QiMousePtr(item)->y);
-				jItem.Get("ex", QiMousePtr(item)->ex);
-			}
-			break;
-			case QiAction::text:
-			{
-				item.Set(QiAction::text);
 				std::string str;
 				jItem.Get("text", str);
-				QiTextPtr(item)->str = String::toWString(str);
+				action.type = Action::_text;
+				action.text.str = String::toWString(str).c_str();
 			}
 			break;
-			case QiAction::color:
+			case Action::_color:
 			{
-				item.Set(QiAction::color);
-				jItem.Get("state", QiColorPtr(item)->state);
-				jItem.Get("move", QiColorPtr(item)->move);
-				jItem.Get("left", (int32&)(QiColorPtr(item)->rect.left));
-				jItem.Get("top", (int32&)(QiColorPtr(item)->rect.top));
-				jItem.Get("right", (int32&)(QiColorPtr(item)->rect.right));
-				jItem.Get("bottom", (int32&)(QiColorPtr(item)->rect.bottom));
-				jItem.Get("rgbe", (uint32&)(QiColorPtr(item)->rgbe));
-
+				action.type = Action::_color;
+				jItem.Get("unfind", action.color.unfind);
+				jItem.Get("move", action.color.move);
+				jItem.Get("left", (int32&)(action.color.rect.left));
+				jItem.Get("top", (int32&)(action.color.rect.top));
+				jItem.Get("right", (int32&)(action.color.rect.right));
+				jItem.Get("bottom", (int32&)(action.color.rect.bottom));
+				jItem.Get("rgbe", (uint32&)(action.color.rgbe));
 				jItem.Get("next", jNext);
-				LoadItem(jNext, QiColorPtr(item)->next);
+				LoadItem(jNext, action.color.next);
 			}
 			break;
-			case QiAction::loop:
+			case Action::_loop:
 			{
-				item.Set(QiAction::loop);
-				jItem.Get("count", QiLoopPtr(item)->count);
-
+				action.type = Action::_loop;
+				jItem.Get("count", action.loop.count);
 				jItem.Get("next", jNext);
-				LoadItem(jNext, QiLoopPtr(item)->next);
+				LoadItem(jNext, action.loop.next);
 			}
 			break;
-			case QiAction::loopEnd:
-			{
-				item.Set(QiAction::loopEnd);
+			case Action::_loopEnd: action.type = Action::_loop; break;
+			default: action.type = Action::_none; break;
 			}
-				break;
-			}
-			
+
 			std::string str;
 			jItem.Get("mark", str);
-			item.action()->mark = String::toWString(str);
-
-			items.Add(item);
+			action.mark = String::toWString(str);
+			actions.Add(action);
 		}
 	}
 }
 
 static void LoadJson()
 {
-	Global::qi.scripts.Emp();
+	Global::qi.scripts.clear();
 	neb::CJsonObject cfg(String::toString(File::TextLoad(L"QuickInput.json")));
 	std::string scache;
 	cfg.Get("key", Global::qi.set.key);
@@ -370,8 +363,8 @@ static void LoadJson()
 
 	File::FindFileStruct files = File::FindFile(L"macro\\*.json");
 
-	for (uint32 u = 0; u < files.len(); u++) {
-		Global::qi.scripts.Add();
+	for (uint32 u = 0; u < files.size(); u++) {
+		Global::qi.scripts.AddNull();
 		Script& script = Global::qi.scripts.Get();
 		script.name = ((std::wstring)files[u].name).substr(0, wcslen(files[u].name) - 5);
 
@@ -383,10 +376,10 @@ static void LoadJson()
 		jScript.Get("key", script.key);
 		jScript.Get("a", script.a);
 
-		neb::CJsonObject jItems;
-		jScript.Get("items", jItems);
+		neb::CJsonObject jActions;
+		jScript.Get("actions", jActions);
 
-		LoadItem(jItems, script.items);
+		LoadItem(jActions, script.actions);
 	}
 }
 
@@ -394,14 +387,14 @@ static std::wstring NameFilter(std::wstring name)
 {
 	for (uint32 n = 0;; n++)
 	{
-		for (uint32 nx = 0; nx < Global::qi.scripts.len(); nx++)
+		for (uint32 nx = 0; nx < Global::qi.scripts.size(); nx++)
 		{
 			std::wstring find = name + L" " + String::toWString(n + 1);
 			if (Global::qi.scripts[nx].name == find)
 			{
 				break;
 			}
-			if (nx >= Global::qi.scripts.len() - 1)
+			if (nx >= Global::qi.scripts.size() - 1)
 			{
 				return find;
 			}

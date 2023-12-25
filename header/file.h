@@ -184,8 +184,8 @@ namespace CG {
 			return cmdLine;
 		}
 
-		//zh_CN.UTF8
-		static void TextSave(std::wstring path, std::wstring str, LPCSTR locale = "chinese") {
+		//zh_CN.UTF8, zh_CN
+		static void TextSave(std::wstring path, std::wstring str, LPCSTR locale = "zh_CN") {
 			std::wofstream ofs(path, std::ios::out);
 			if (ofs.good())
 			{
@@ -195,8 +195,8 @@ namespace CG {
 			}
 		}
 
-		//zh_CN.UTF8
-		static std::wstring TextLoad(std::wstring path, LPCSTR locale = "chinese") {
+		//zh_CN.UTF8, zh_CN
+		static std::wstring TextLoad(std::wstring path, LPCSTR locale = "zh_CN") {
 			std::wifstream ifs(path, std::ios::in);
 			if (ifs.is_open())
 			{
@@ -258,11 +258,9 @@ namespace CG {
 			intptr_t state = pFind;
 
 			while (state != -1) {
-				files.Add();
-				files[files.len() - 1] = file;
+				files.Add(file);
 				state = _wfindnext32(pFind, &file);
 			}
-
 			return files;
 		}
 	};

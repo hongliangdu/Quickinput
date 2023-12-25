@@ -13,28 +13,24 @@
 class InputHook
 {
 public:
-	enum
+	typedef unsigned __int8 HookType;
+
+	enum HookTypes
 	{
-		none,
-		mouse,
-		keybd,
+		none = (unsigned __int8)0,
+		mouse = (unsigned __int8)1,
+		keybd = (unsigned __int8)2,
 		all = mouse | keybd
 	};
 
-	static void Stop(int flags)
+	static void Stop(HookType flags = HookTypes::all)
 	{
-		if (flags & mouse)
-		{
-			p.mouseState = 0;
-		}
-		if (flags & keybd)
-		{
-			p.keybdState = 0;
-		}
+		if (flags & mouse) p.mouseState = 0;
+		if (flags & keybd) p.keybdState = 0;
 		memset(p.keys, 0, sizeof(p.keys));
 	}
 
-	static bool Start(int flags, bool blockRep = 0)
+	static bool Start(HookType flags = HookTypes::all, bool blockRep = 0)
 	{
 		if (!p.thread) p.thread = CreateThread(0, 0, HookThread, 0, 0, 0);
 		if (!p.thread) return 0;
@@ -42,14 +38,8 @@ public:
 		if (!p.mouse) return 0;
 		if (!p.keybd) return 0;
 
-		if (flags & mouse)
-		{
-			p.mouseState = 1;
-		}
-		if (flags & keybd)
-		{
-			p.keybdState = 1;
-		}
+		if (flags & mouse) p.mouseState = 1;
+		if (flags & keybd) p.keybdState = 1;
 		memset(p.keys, 0, sizeof(p.keys));
 		BlockRep(blockRep);
 		return 1;

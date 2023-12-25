@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <math.h>
+#include "base.h"
 
 namespace CG {
 	class String

@@ -84,12 +84,12 @@ private:
 	void TbUpdate()
 	{
 		ui.tbItem->clearMask();
-		ui.tbItem->setRowCount(scripts.len());
+		ui.tbItem->setRowCount(scripts.size());
 		ui.tbItem->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::Fixed);
 		ui.tbItem->verticalHeader()->setDefaultAlignment(Qt::AlignCenter);
 		ui.tbItem->verticalHeader()->setDefaultSectionSize(0);
 
-		for (uint32 u = 0; u < scripts.len(); u++) {
+		for (uint32 u = 0; u < scripts.size(); u++) {
 			ui.tbItem->setItem(u, 0, new QTableWidgetItem(QString::fromWCharArray(scripts[u].name.c_str())));
 			ui.tbItem->item(u, 0)->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 			//
@@ -171,6 +171,7 @@ private slots:
 
 		LockControl(0);
 		TbUpdate();
+		SaveScript(scripts[row]);
 	}
 
 	void OnKeyChanged()

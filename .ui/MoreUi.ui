@@ -425,7 +425,7 @@ QPushButton:hover{background-color:#C00;}</string>
            <x>0</x>
            <y>0</y>
            <width>776</width>
-           <height>2484</height>
+           <height>2552</height>
           </rect>
          </property>
          <property name="styleSheet">
@@ -467,7 +467,11 @@ QPushButton:hover{background-color:#C00;}</string>
              <string notr="true">font-family:&quot;Microsoft YaHei&quot;;font-size:12px;</string>
             </property>
             <property name="text">
-             <string>2023-12-24
+             <string>2023-12-25
+ㅤㅤ1：增加鼠标位置和查找颜色的位置预览
+ㅤㅤ2：优化内存管理
+
+2023-12-24
 ㅤㅤ1：修改json动态分配结构，不兼容以前版本
 ㅤㅤ2：增加查找颜色的找到并移动
 ㅤㅤ3：宏触发直接点击列表启用或禁用

@@ -29,7 +29,7 @@ private:
 
 	Ui::MacroUiClass ui;
 	QWidget* main = 0;
-	List<Script>& scripts = Global::qi.scripts;
+	Scripts& scripts = Global::qi.scripts;
 	QTimer* timer;
 
 	void WidInit()
@@ -75,12 +75,12 @@ private:
 	void TbUpdate()
 	{
 		ui.tbItem->clearMask();
-		ui.tbItem->setRowCount(scripts.len());
+		ui.tbItem->setRowCount(scripts.size());
 		ui.tbItem->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::Fixed);
 		ui.tbItem->verticalHeader()->setDefaultAlignment(Qt::AlignCenter);
 		ui.tbItem->verticalHeader()->setDefaultSectionSize(0);
 
-		for (uint32 u = 0; u < scripts.len(); u++) {
+		for (uint32 u = 0; u < scripts.size(); u++) {
 			ui.tbItem->setItem(u, 0, new QTableWidgetItem(QString::fromWCharArray(scripts[u].name.c_str())));
 			ui.tbItem->item(u, 0)->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 		}
@@ -129,7 +129,7 @@ private slots:
 			return;
 		}
 
-		std::wstring path = L"json\\";
+		std::wstring path = L"macro\\";
 		path += (LPCWSTR)ui.etName->text().utf16();
 		path += L".json";
 
@@ -143,7 +143,7 @@ private slots:
 			return;
 		}
 
-		path = L"json\\" + scripts[pos].name + L".json";
+		path = L"macro\\" + scripts[pos].name + L".json";
 		File::FileDelete(path.c_str());
 
 		scripts[pos].name = (LPCWSTR)ui.etName->text().utf16();
@@ -158,20 +158,20 @@ private slots:
 
 	void OnBnRec()
 	{
-		scripts.Add();
-		RecordUi rw(main, scripts.Get().items);
+		scripts.AddNull();
+		RecordUi rw(main, scripts.Get().actions);
 		main->hide();
 		Global::qi.HookState(1);
 		Global::qi.state = 0;
 		Global::qi.rec = &rw;
-
-		std::wstring text = L"按下";
-		QKeyEdit ke;
-		ke.Mode(2);
-		ke.VirtualKey(Global::qi.set.recKey & 0xFFFF, Global::qi.set.recKey >> 16);
-		text += ke.Name().toStdWString();
-		text += L"开始/停止录制";
-		TipsWindow::Show(text, RGB(0x20, 0xFF, 0x20));
+		
+		if (Global::qi.set.recKey & 0xFFFF)
+		{
+			std::wstring text = L"按下";
+			text += Input::Name(Global::qi.set.recKey & 0xFFFF);
+			text += L"开始/停止录制";
+			TipsWindow::Show(text, RGB(0x20, 0xFF, 0x20));
+		}
 
 		rw.exec();
 		main->show();
@@ -185,9 +185,10 @@ private slots:
 
 	void OnBnAdd()
 	{
-		scripts.Add();
+		scripts.AddNull();
 		scripts.Get().name = NameFilter(L"宏");
-		scripts.Get().mode = 0;
+		scripts.Get().mode = 1;
+		scripts.Get().a = 1;
 
 		SaveScript(scripts.Get());
 		LoadJson();
@@ -201,7 +202,7 @@ private slots:
 		int pos = ui.tbItem->currentRow();
 		if (pos < 0) return;
 
-		EditUi edit(scripts[pos].items);
+		EditUi edit(scripts[pos].actions);
 		edit.setWindowTitle(u8"编辑 - " + QString::fromWCharArray(scripts[pos].name.c_str()));
 		edit.exec();
 

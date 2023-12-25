@@ -12,7 +12,6 @@
 #include "ihook.h"
 
 #include "color.h"
-#include "image.h"
 #include "media.h"
 
 #include "window.h"
