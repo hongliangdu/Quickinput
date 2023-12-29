@@ -239,70 +239,28 @@ DWORD CALLBACK ThreadRelease(LPVOID key)
 	Input::State((BYTE)key, 0, 214);
 	return 0;
 }
-DWORD CALLBACK ThreadWndActive(LPVOID lParam)
-{
-	while (Global::qi.state)
-	{
-		Global::qi.fun.wndActive.wnd = FindWindowW(0, Global::qi.fun.wndActive.name.c_str());
-		if (Global::qi.fun.wndActive.wnd)
-		{
-			bool active = (GetForegroundWindow() == Global::qi.fun.wndActive.wnd);
-			if (!Global::qi.fun.wndActive.active && active)
-			{
-				Global::qi.fun.wndActive.active = 1;
-
-				if (Global::qi.set.showTips)
-				{
-					TipsWindow::Popup(L"已启用 - 窗口内", RGB(0xA0, 0xFF, 0xC0));
-				}
-
-			}
-			else if (Global::qi.fun.wndActive.active && !active)
-			{
-				Global::qi.fun.wndActive.active = 0;
-
-				if (Global::qi.set.showTips)
-				{
-					TipsWindow::Popup(L"已禁用 - 窗口外", RGB(0xFF, 0x80, 0x80));
-				}
-			}
-		}
-		sleep(100);
-	}
-	Global::qi.fun.wndActive.thread = 0;
-	return 0;
-}
 
 byte block = 0;
 
 void SwitchKey(BYTE vk, bool state)
 {
-	if ((Global::qi.set.key & 0xFFFF) == vk) Global::qi.set.k1 = state;
-	if (!(Global::qi.set.key >> 16)) Global::qi.set.k2 = 1;
-	else if ((Global::qi.set.key >> 16) == vk) Global::qi.set.k2 = state;
+	if (vk == VK_SHIFT) Global::qi.set.shift = state;
+	else if (vk == VK_F12) Global::qi.set.f12 = state;
+	if (Global::qi.set.shift && Global::qi.set.f12)
+	{
+		QiState(0);
+		return;
+	}
 
+	byte k1 = Global::qi.set.key & 0xFFFF;
+	byte k2 = Global::qi.set.key >> 16;
+	if (k1 == vk) Global::qi.set.k1 = state;
+	if (!k2) Global::qi.set.k2 = 1;
+	else if (k2 == vk) Global::qi.set.k2 = state;
 	if (Global::qi.set.k1 && Global::qi.set.k2)
 	{
-		if (Global::qi.state)
-		{
-			Global::qi.state = 0;
-			TipsWindow::Popup(UI::qiOff, RGB(0xFF, 0x50, 0x50));
-
-			if (Global::qi.set.audFx)Media::WavePlay(audfx.off);
-		}
-		else
-		{
-			Global::qi.state = 1;
-			Global::qi.ReScreen();
-			TipsWindow::screen = Global::qi.screen;
-
-			if (Global::qi.fun.wndActive.state) Global::qi.fun.wndActive.thread = Thread::Start(ThreadWndActive);
-			else Global::qi.fun.wndActive.active = 1;
-
-			TipsWindow::Popup(UI::qiOn);
-
-			if (Global::qi.set.audFx)Media::WavePlay(audfx.on);
-		}
+		if (Global::qi.state) QiState(0);
+		else QiState(1);
 		Global::qi.set.k1 = 0, Global::qi.set.k2 = 0;
 	}
 }
@@ -311,7 +269,7 @@ void TriggerKey(BYTE vk, bool state)
 {
 	std::wstring text;
 
-	if (Global::qi.fun.showClock.state && Global::qi.fun.showClock.key == vk)
+	if (Global::qi.fun.showClock.state && Global::qi.fun.showClock.key == vk && state)
 	{
 		System::TimeStruct ts = System::Time();
 		text = String::toWString(ts.hour) + L" : " + String::toWString(ts.min) + L" - " + String::toWString(ts.sec);
@@ -330,14 +288,14 @@ void TriggerKey(BYTE vk, bool state)
 				if (!Global::qi.fun.quickClick.thread)
 				{
 					Global::qi.fun.quickClick.thread = Thread::Start(ThreadQuickClick);
-					if (Global::qi.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ开始");
+					if (Global::qi.set.showTips) TipsWindow::Popup(std::wstring(Input::Name(Global::qi.fun.quickClick.key)) + std::wstring(L"ㅤ连点开始"));
 				}
 				else
 				{
 					Thread::Start(ThreadRelease, (LPVOID)Global::qi.fun.quickClick.key);
 					TerminateThread(Global::qi.fun.quickClick.thread, 0);
 					Global::qi.fun.quickClick.thread = 0;
-					if (Global::qi.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ停止", RGB(0xFF, 0xAA, 0xFF));
+					if (Global::qi.set.showTips) TipsWindow::Popup(std::wstring(Input::Name(Global::qi.fun.quickClick.key)) + std::wstring(L"ㅤ连点结束"));
 				}
 			}
 		}
@@ -348,7 +306,7 @@ void TriggerKey(BYTE vk, bool state)
 				if (!Global::qi.fun.quickClick.thread)
 				{
 					Global::qi.fun.quickClick.thread = Thread::Start(ThreadQuickClick);
-					if (Global::qi.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ执行中", RGB(0xFF, 0xFF, 0x60));
+					if (Global::qi.set.showTips) TipsWindow::Popup(std::wstring(Input::Name(Global::qi.fun.quickClick.key)) + std::wstring(L"ㅤ连点开始"));
 				}
 			}
 			else
@@ -358,7 +316,7 @@ void TriggerKey(BYTE vk, bool state)
 					Thread::Start(ThreadRelease, (LPVOID)Global::qi.fun.quickClick.key);
 					TerminateThread(Global::qi.fun.quickClick.thread, 0);
 					Global::qi.fun.quickClick.thread = 0;
-					if (Global::qi.set.showTips) TipsWindow::Popup(L"快捷连点ㅤ停止", RGB(0xFF, 0xAA, 0xFF));
+					if (Global::qi.set.showTips) TipsWindow::Popup(std::wstring(Input::Name(Global::qi.fun.quickClick.key)) + std::wstring(L"ㅤ连点结束"), RGB(0xFF, 0xFF, 0x60));
 				}
 			}
 		}
@@ -506,15 +464,6 @@ InputHookProc()
 	return 0;
 }
 
-void SetHookState(bool state)
-{
-	if (state)
-	{
-		if (!InputHook::Start(InputHook::all, 1)) MsgBox::Error(L"创建输入Hook失败，检查是否管理员身份运行 或 是否被安全软件拦截。");
-	}
-	else InputHook::Stop(InputHook::all);
-}
-
 int main(int argc, char* argv[])
 {
 	if (Process::isRunning(File::PathToUrl(Process::runPath()).c_str()))
@@ -526,27 +475,15 @@ int main(int argc, char* argv[])
 	timeBeginPeriod(1);
 
 	LoadJson();
-	InitUI(!Global::qi.set.wndZoom);
+	InitUI(!Global::qi.set.zoomBlock);
 	QApplication app(argc, argv);
 
-	Global::qi.Ptrs(SetHookState);
 	Global::qi.ReScreen();
 	TipsWindow::screen = Global::qi.screen;
+	TipsWindow::thread = Thread::Start(TipsWindow::TipsWindowThread);
 
 	MainUi wnd;
-
-	if (!Global::qi.set.minMode)
-	{
-		wnd.show();
-		Global::qi.HookState(0);
-		Global::qi.state = 0;
-	}
-	else
-	{
-		wnd.hide();
-		Global::qi.HookState(1);
-		Global::qi.state = 0;
-	}
+	if (!Global::qi.set.minMode) wnd.show();
 
 	app.exec();
 

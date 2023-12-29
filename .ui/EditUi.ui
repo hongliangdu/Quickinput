@@ -1520,8 +1520,8 @@ QPushButton:hover{background-color: #C0E2F2;}</string>
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>266</width>
-             <height>626</height>
+             <width>356</width>
+             <height>628</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="box2Box">

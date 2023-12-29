@@ -27,22 +27,24 @@ private:
 		ui.hkKey->VirtualKey(sets->key & 0xFFFF, sets->key >> 16);
 		ui.hkRec->VirtualKey(sets->recKey);
 
+		ui.chbDefOn->setChecked(sets->defOn);
 		ui.chbShowTips->setChecked(sets->showTips);
 		ui.chbAudFx->setChecked(sets->audFx);
 		ui.chbMinMode->setChecked(sets->minMode);
 		ui.chbStart->setChecked(Task::Find(L"QuickInput").result);
-		ui.chbZoom->setChecked(sets->wndZoom);
+		ui.chbZoomBlock->setChecked(sets->zoomBlock);
 	}
 
 	void WidEvent()
 	{
 		connect(ui.hkKey, SIGNAL(changed()), this, SLOT(OnHkKey()));
 		connect(ui.hkRec, SIGNAL(changed()), this, SLOT(OnHkRec()));
+		connect(ui.chbDefOn, SIGNAL(clicked()), this, SLOT(OnDefOn()));
 		connect(ui.chbShowTips, SIGNAL(clicked()), this, SLOT(OnShowTips()));
-		connect(ui.chbAudFx, SIGNAL(clicked()), this, SLOT(OnAud()));
+		connect(ui.chbAudFx, SIGNAL(clicked()), this, SLOT(OnAudFx()));
 		connect(ui.chbMinMode, SIGNAL(clicked()), this, SLOT(OnMinMode()));
 		connect(ui.chbStart, SIGNAL(clicked()), this, SLOT(OnStart()));
-		connect(ui.chbZoom, SIGNAL(clicked()), this, SLOT(OnZoom()));
+		connect(ui.chbZoomBlock, SIGNAL(clicked()), this, SLOT(OnZoomBlock()));
 	}
 
 private slots:
@@ -59,9 +61,9 @@ private slots:
 		SaveJson();
 	}
 
-	void OnAud()
+	void OnDefOn()
 	{
-		sets->audFx = ui.chbAudFx->isChecked();
+		sets->defOn = ui.chbDefOn->isChecked();
 		SaveJson();
 	}
 
@@ -71,9 +73,21 @@ private slots:
 		SaveJson();
 	}
 
+	void OnAudFx()
+	{
+		sets->audFx = ui.chbAudFx->isChecked();
+		SaveJson();
+	}
+
 	void OnMinMode()
 	{
 		sets->minMode = ui.chbMinMode->isChecked();
+		SaveJson();
+	}
+
+	void OnZoomBlock()
+	{
+		sets->zoomBlock = ui.chbZoomBlock->isChecked();
 		SaveJson();
 	}
 
@@ -95,11 +109,5 @@ private slots:
 				MsgBox::Error(ts.log.c_str(), L"错误");
 			}
 		}
-	}
-
-	void OnZoom()
-	{
-		sets->wndZoom = ui.chbZoom->isChecked();
-		SaveJson();
 	}
 };

@@ -19,7 +19,6 @@ public:
 	}
 
 private:
-
 	Ui::FuncUiClass ui;
 	FuncData* func = &Global::qi.fun;
 
@@ -102,21 +101,21 @@ private slots:
 
 	void OnBnWndActive()
 	{
+		parentWidget()->hide();
 		TipsWindow::Show(L"按回车开始，切换到对应窗口并再按回车", RGB(0x20, 0xFF, 0x20));
 		while (!Input::state(VK_RETURN)) sleep(10);
 		while (Input::state(VK_RETURN)) sleep(10);
 
-		WCHAR name[MAX_PATH];
 		while (!Input::state(VK_RETURN))
 		{
 			func->wndActive.wnd = GetForegroundWindow();
-			GetWindowTextW(func->wndActive.wnd, name, MAX_PATH);
-			TipsWindow::Show(name, RGB(0xCC, 0xEE, 0xFF));
+			func->wndActive.name = Window::text(func->wndActive.wnd);
+			TipsWindow::Show(func->wndActive.name, RGB(0xCC, 0xEE, 0xFF));
 			sleep(50);
 		}
-		TipsWindow::Popup(name, RGB(0x20, 0xFF, 0x20));
-		func->wndActive.name = name;
+		TipsWindow::Popup(func->wndActive.name, RGB(0x20, 0xFF, 0x20));
 		ui.etWndActive->setText(QString::fromWCharArray(func->wndActive.name.c_str()));
+		parentWidget()->show();
 
 		SaveJson();
 	}

@@ -79,9 +79,9 @@ namespace CG {
 		}
 
 		static std::wstring PathLast(std::wstring absPath) {
-			size_t len = absPath.length() - 2;
-			while ((len > 0) && (absPath[len] != L'\\')) len--;
-			return absPath.substr(0, len);
+			size_t p = absPath.length() - 1;
+			while ((p > 0) && (absPath[p] != L'\\')) p--;
+			return absPath.substr(0, p);
 		}
 
 		static bool FileNameOk(std::wstring path)
@@ -147,41 +147,66 @@ namespace CG {
 			return str;
 		}
 
-		typedef List<std::wstring> CmdLine;
-		static CmdLine toCmdLine(std::wstring cmd)
+		struct CmdLine
 		{
-			CmdLine cmdLine;
-			size_t pos = cmd.find(L".exe");
-			if (pos > cmd.length()) return cmdLine;
-			pos += 4;
-			if (pos > cmd.length()) return cmdLine;
-			cmdLine.Add(cmd.substr(0, pos));
-			for (size_t s = pos; s < cmd.length(); s++)
-			{
-				if (cmd[s] == L' ')
-				{
-					while (s < cmd.length() && cmd[s] == L' ') s++;
-					if (s >= cmd.length()) return cmdLine;
-					if (cmd[s] != L'\"')
-					{
-						pos = s;
-						while (s < cmd.length() && cmd[s] != L' ') s++;
-						if (s >= cmd.length()) return cmdLine;
-						cmdLine.Add(cmd.substr(pos, s - pos));
-						s--;
-					}
-					else
-					{
-						pos = s;
-						s++;
-						while (s < cmd.length() && cmd[s] != L'\"') s++;
-						if (s >= cmd.length()) return cmdLine;
-						cmdLine.Add(cmd.substr(pos, s - pos + 1));
-					}
+			std::wstring path;
+			List<std::wstring> param;
+		};
 
+		static CmdLine ParseCmd(std::wstring cmd, bool qmark = 1)
+		{
+			CmdLine cl;
+			uint32 p = 0, pv = 0, c = 0;
+			bool pt = 0;
+			while (p < cmd.length() && cmd[p] == L' ') p++;
+			while (1)
+			{
+				if (cmd[p] == L' ' || p >= cmd.length())
+				{
+					if (pt) cl.param.Add(cmd.substr(pv, p - pv)); else cl.path = cmd.substr(pv, p - pv), pt = 1;
+					while (p < cmd.length() && cmd[p] == L' ') p++; // remove space
+					if (p < cmd.length()) pv = p;
+					else break;
 				}
+				else if (cmd[p] == L'\"')
+				{
+					pv = p, p++;
+					if (!qmark) pv = p;
+					if (p < cmd.length())
+					{
+						while (p < cmd.length() && cmd[p] != L'\"') p++; // to "
+						if (qmark) c = p - pv + 1;
+						else c = p - pv;
+						if (pt) cl.param.Add(cmd.substr(pv, c)); else cl.path = cmd.substr(pv, c), pt = 1;
+						if (p < cmd.length())
+						{
+							p++; // skip "
+							while (p < cmd.length() && cmd[p] == L' ') p++; // remove space
+							pv = p;
+						}
+					}
+				}
+				else if (cmd[p] == L'\'')
+				{
+					pv = p, p++;
+					if (!qmark) pv = p;
+					if (p < cmd.length())
+					{
+						while (p < cmd.length() && cmd[p] != L'\'') p++; // to '
+						if (qmark) c = p - pv + 1;
+						else c = p - pv;
+						if (pt) cl.param.Add(cmd.substr(pv, c)); else cl.path = cmd.substr(pv, c), pt = 1;
+						if (p < cmd.length())
+						{
+							p++; // skip '
+							while (p < cmd.length() && cmd[p] == L' ') p++; // remove space
+							pv = p;
+						}
+					}
+				}
+				else p++;
 			}
-			return cmdLine;
+			return cl;
 		}
 
 		//zh_CN.UTF8, zh_CN
@@ -219,7 +244,7 @@ namespace CG {
 		}
 
 		static LPCWSTR FindFileWindow(HWND mainWnd, LPCWSTR title = L"Select File", LPCWSTR type = 0) {
-			WCHAR path[MAX_PATH];
+			WCHAR path[MAX_PATH] = { 0 };
 			OPENFILENAMEW ofn = { 0 };
 			ofn.lStructSize = sizeof(OPENFILENAMEW);
 			ofn.hwndOwner = mainWnd;
@@ -235,7 +260,7 @@ namespace CG {
 		}
 
 		static LPCWSTR FindFolderWindow(HWND mainWnd, LPCWSTR title = L"Select Folder") {
-			WCHAR path[MAX_PATH];
+			WCHAR path[MAX_PATH] = { 0 };
 			BROWSEINFOW bi = { 0 };
 
 			bi.hwndOwner = mainWnd;

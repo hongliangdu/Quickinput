@@ -8,6 +8,7 @@ SIZE  TipsWindow::screen = { 0 };
 HANDLE TipsWindow::thread = 0;
 HWND TipsWindow::wnd = 0;
 UINT TipsWindow::time = 0;
+UINT TipsWindow::timeBegin = 0;
 COLORREF  TipsWindow::color = 0;
 std::wstring  TipsWindow::text;
 

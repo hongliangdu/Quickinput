@@ -9,19 +9,24 @@ struct TipsWindow
 	static COLORREF color;
 	static std::wstring text;
 	static UINT time;
+	static UINT timeBegin;
 
 	static LRESULT CALLBACK TipsWndProc(HWND wnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		if (msg == WM_TIMER)
 		{
-			if (time < 1001)
+			UINT now = clock() - timeBegin;
+			if (now < time)
 			{
-				BYTE alpha = (0.255f * (float)time);
+				UINT alpha = (UINT)(0.255f * (float)(time - now));
+				(alpha > 255) ? alpha = 255 : 0;
 				SetLayeredWindowAttributes(wnd, 0, alpha, LWA_ALPHA);
-				if (!alpha) KillTimer(wnd, 0);
 			}
-			time -= 25;
-			if (time < 26) time = 0;
+			else
+			{
+				KillTimer(wnd, 0);
+				SetLayeredWindowAttributes(wnd, 0, 0, LWA_ALPHA);
+			}
 		}
 		else if (msg == WM_PAINT)
 		{
@@ -54,48 +59,25 @@ struct TipsWindow
 		Window::Register(L"TipsWnd", TipsWndProc, 1, RGB(0xCC, 0xEE, 0xFF));
 		wnd = Window::Create(L"TipsWnd", L"TipsWnd", WS_POPUP | WS_VISIBLE, WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_NOACTIVATE, 1, 1, 0, 0);
 		SetLayeredWindowAttributes(wnd, 0, 0, LWA_ALPHA);
-		Window::Redraw(wnd);
-		MSG msg;
-		while (GetMessageW(&msg, wnd, WM_PAINT, WM_TIMER))
-		{
-			TranslateMessage(&msg);
-			DispatchMessageW(&msg);
-		}
+		MSG msg; while (GetMessageW(&msg, wnd, WM_PAINT, WM_TIMER)) TranslateMessage(&msg), DispatchMessageW(&msg);
 		return 0;
 	}
 
 	static void Popup(std::wstring text, COLORREF color = RGB(0xCC, 0xEE, 0xFF), UINT time = 1000)
 	{
 		KillTimer(wnd, 0);
-		if (!thread)
-		{
-			thread = Thread::Start(TipsWindowThread);
-			while (!wnd) sleep(1);
-		}
-		if (!(Window::exStyle(wnd) & WS_EX_NOACTIVATE))
-		{
-			Window::ExStyle(wnd, WS_EX_NOACTIVATE);
-		}
-		Window::Top(wnd);
+		timeBegin = clock();
+		if (!(Window::exStyle(wnd) & WS_EX_NOACTIVATE)) Window::ExStyle(wnd, WS_EX_NOACTIVATE);
 		TipsWindow::text = text;
 		TipsWindow::color = color;
 		TipsWindow::time = time;
 		Window::Redraw(wnd);
-		SetTimer(wnd, 0, 10, 0);
+		SetTimer(wnd, 0, 16, 0);
 	}
 	static void Show(std::wstring text, COLORREF color = RGB(0xCC, 0xEE, 0xFF))
 	{
 		KillTimer(wnd, 0);
-		if (!thread)
-		{
-			thread = Thread::Start(TipsWindowThread);
-			while (!wnd) sleep(1);
-		}
-		if (!(Window::exStyle(wnd) & WS_EX_NOACTIVATE))
-		{
-			Window::ExStyle(wnd, WS_EX_NOACTIVATE);
-		}
-		Window::Top(wnd);
+		if (!(Window::exStyle(wnd) & WS_EX_NOACTIVATE)) Window::ExStyle(wnd, WS_EX_NOACTIVATE);
 		TipsWindow::text = text;
 		TipsWindow::color = color;
 		Window::Redraw(wnd);
@@ -104,15 +86,7 @@ struct TipsWindow
 	static void Hide()
 	{
 		KillTimer(wnd, 0);
-		if (!thread)
-		{
-			thread = Thread::Start(TipsWindowThread);
-			while (!wnd) sleep(1);
-		}
-		if (!(Window::exStyle(wnd) & WS_EX_NOACTIVATE))
-		{
-			Window::ExStyle(wnd, WS_EX_NOACTIVATE);
-		}
+		if (!(Window::exStyle(wnd) & WS_EX_NOACTIVATE)) Window::ExStyle(wnd, WS_EX_NOACTIVATE);
 		SetLayeredWindowAttributes(wnd, 0, 0, LWA_ALPHA);
 	}
 };

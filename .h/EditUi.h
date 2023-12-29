@@ -14,11 +14,11 @@
 class EditUi : public QDialog
 {
 	Q_OBJECT
+
 public:
 	EditUi(Actions& actions) : QDialog()
 	{
 		this->actions = &actions;
-
 		ui.setupUi(this);
 		setWindowFlags(Qt::FramelessWindowHint);
 		setAttribute(Qt::WA_TranslucentBackground);
@@ -517,15 +517,9 @@ private:
 		TbUpdate();
 	}
 
-	void mousePressEvent(QMouseEvent* et)
-	{
-		if (et->buttons() & Qt::LeftButton) msPos = et->pos();
-	}
+	void mousePressEvent(QMouseEvent* et) { if (et->buttons() & Qt::LeftButton) msPos = et->pos(); }
 
-	void mouseMoveEvent(QMouseEvent* et)
-	{
-		if (et->buttons() & Qt::LeftButton) move(et->pos() + pos() - msPos);
-	}
+	void mouseMoveEvent(QMouseEvent* et) { if (et->buttons() & Qt::LeftButton) move(et->pos() + pos() - msPos); }
 
 private slots:
 	bool eventFilter(QObject* obj, QEvent* et)
@@ -613,10 +607,7 @@ private slots:
 		}
 	}
 
-	void OnTbSelect(QTableWidgetItem*, QTableWidgetItem*)
-	{
-		OnTbClicked(ui.tbItem->currentRow(), ui.tbItem->currentColumn());
-	}
+	void OnTbSelect(QTableWidgetItem*, QTableWidgetItem*) { OnTbClicked(ui.tbItem->currentRow(), ui.tbItem->currentColumn()); }
 
 	void OnTbDoubleClick(int row, int column)
 	{
@@ -628,30 +619,15 @@ private slots:
 		SetChanging();
 	}
 
-	void OnBnClose()
-	{
-		hide();
-	}
-	void OnBnKeyAdd()
-	{
-		if (changing) ChangeItem(Action::_key);
-		else AddItem(Action::_key);
-	}
-	void OnBnMoveAdd()
-	{
-		if (changing) ChangeItem(Action::_mouse);
-		else AddItem(Action::_mouse);
-	}
-	void OnBnDelayAdd()
-	{
-		if (changing) ChangeItem(Action::_delay);
-		else AddItem(Action::_delay);
-	}
-	void OnBnLoopAdd()
-	{
-		if (changing) ChangeItem(Action::_loop);
-		else AddItem(Action::_loop);
-	}
+	void OnBnClose() { close(); }
+	void OnBnKeyAdd() { if (changing) ChangeItem(Action::_key); else AddItem(Action::_key); }
+	void OnBnMoveAdd() { if (changing) ChangeItem(Action::_mouse); else AddItem(Action::_mouse); }
+	void OnBnDelayAdd() { if (changing) ChangeItem(Action::_delay); else AddItem(Action::_delay); }
+	void OnBnLoopAdd() { if (changing) ChangeItem(Action::_loop); else AddItem(Action::_loop); }
+	void OnBnTextAdd() { if (changing) ChangeItem(Action::_text); else AddItem(Action::_text); }
+	void OnBnColorAdd() { if (changing) ChangeItem(Action::_color); else AddItem(Action::_color); }
+	void OnBnEndAdd() { if (changing) ChangeItem(Action::_end); else AddItem(Action::_end); }
+	void OnBnEndLoopAdd() { if (changing) ChangeItem(Action::_loopEnd); else AddItem(Action::_loopEnd); }
 	void OnBnLoopEdit()
 	{
 		int pos = ui.tbItem->currentRow();
@@ -662,16 +638,6 @@ private slots:
 		edit.setWindowTitle(u8"编辑 - 循环");
 		edit.exec();
 	}
-	void OnBnTextAdd()
-	{
-		if (changing) ChangeItem(Action::_text);
-		else AddItem(Action::_text);
-	}
-	void OnBnColorAdd()
-	{
-		if (changing) ChangeItem(Action::_color);
-		else AddItem(Action::_color);
-	}
 	void OnColorEdit()
 	{
 		int pos = ui.tbItem->currentRow();
@@ -681,16 +647,6 @@ private slots:
 		EditUi edit(actions[0][pos].color.next);
 		edit.setWindowTitle(u8"编辑 - 查找颜色");
 		edit.exec();
-	}
-	void OnBnEndAdd()
-	{
-		if (changing) ChangeItem(Action::_end);
-		else AddItem(Action::_end);
-	}
-	void OnBnEndLoopAdd()
-	{
-		if (changing) ChangeItem(Action::_loopEnd);
-		else AddItem(Action::_loopEnd);
 	}
 	void OnBnDel()
 	{

@@ -9,10 +9,7 @@
 
 struct QuickInputStruct;
 
-struct Global
-{
-	static QuickInputStruct qi;
-};
+struct Global { static QuickInputStruct qi; };
 
 struct UI {
 	static std::wstring qiOn;
@@ -84,11 +81,13 @@ struct SettingsData
 {
 	uint32 key = 0;
 	uint32 recKey = 0;
+	bool shift = 0, f12 = 0;
 	bool k1 = 0, k2 = 0;
+	bool defOn = 0;
 	bool showTips = 0;
 	bool audFx = 0;
 	bool minMode = 0;
-	bool wndZoom = 0;
+	bool zoomBlock = 0;
 };
 
 struct FuncData
@@ -111,27 +110,12 @@ public:
 	SIZE screen = System::screenSize();
 	SIZE vscreen = System::screenVSize();
 
-private:
-	void (*SetHookState)(bool) = 0;
-
-public:
-
 	void ReScreen()
 	{
 		screen = System::screenSize();
 		QRect qr = QApplication::desktop()->screenGeometry();
 		vscreen.cx = qr.width();
 		vscreen.cy = qr.height();
-	}
-
-	void Ptrs(void (*SetHookState)(bool))
-	{
-		this->SetHookState = SetHookState;
-	}
-
-	void HookState(bool state)
-	{
-		SetHookState(state);
 	}
 };
 
@@ -242,12 +226,13 @@ static void SaveJson()
 	neb::CJsonObject cfg;
 	std::string scache;
 	cfg.Add("document_charset", std::string("GB2312"));
+	cfg.Add("defOn", Global::qi.set.defOn);
 	cfg.Add("key", Global::qi.set.key);
 	cfg.Add("recKey", Global::qi.set.recKey);
 	cfg.Add("showTips", Global::qi.set.showTips);
 	cfg.Add("audFx", Global::qi.set.audFx);
 	cfg.Add("minMode", Global::qi.set.minMode);
-	cfg.Add("wndZoom", Global::qi.set.wndZoom);
+	cfg.Add("zoomBlock", Global::qi.set.zoomBlock);
 	cfg.Add("quickClickKey", Global::qi.fun.quickClick.key);
 	cfg.Add("quickClickState", Global::qi.fun.quickClick.state);
 	cfg.Add("quickClickDelay", Global::qi.fun.quickClick.delay);
@@ -344,22 +329,44 @@ static void _stdcall LoadItem(const neb::CJsonObject jActions, Actions& actions)
 static void LoadJson()
 {
 	Global::qi.scripts.clear();
-	neb::CJsonObject cfg(String::toString(File::TextLoad(L"QuickInput.json")));
-	std::string scache;
-	cfg.Get("key", Global::qi.set.key);
-	cfg.Get("recKey", Global::qi.set.recKey);
-	cfg.Get("showTips", Global::qi.set.showTips);
-	cfg.Get("audFx", Global::qi.set.audFx);
-	cfg.Get("minMode", Global::qi.set.minMode);
-	cfg.Get("wndZoom", Global::qi.set.wndZoom);
-	cfg.Get("quickClickKey", Global::qi.fun.quickClick.key);
-	cfg.Get("quickClickState", Global::qi.fun.quickClick.state);
-	cfg.Get("quickClickDelay", Global::qi.fun.quickClick.delay);
-	cfg.Get("quickClickMode", Global::qi.fun.quickClick.mode);
-	cfg.Get("showClockKey", Global::qi.fun.showClock.key);
-	cfg.Get("showClockState", Global::qi.fun.showClock.state);
-	cfg.Get("wndActiveState", Global::qi.fun.wndActive.state);
-	cfg.Get("wndActiveName", scache); Global::qi.fun.wndActive.name = String::toWString(scache);
+	if (File::FileState(L"QuickInput.json"))
+	{
+		neb::CJsonObject cfg(String::toString(File::TextLoad(L"QuickInput.json")));
+		std::string scache;
+		cfg.Get("defOn", Global::qi.set.defOn);
+		cfg.Get("key", Global::qi.set.key);
+		cfg.Get("recKey", Global::qi.set.recKey);
+		cfg.Get("showTips", Global::qi.set.showTips);
+		cfg.Get("audFx", Global::qi.set.audFx);
+		cfg.Get("minMode", Global::qi.set.minMode);
+		cfg.Get("zoomBlock", Global::qi.set.zoomBlock);
+		cfg.Get("quickClickState", Global::qi.fun.quickClick.state);
+		cfg.Get("quickClickKey", Global::qi.fun.quickClick.key);
+		cfg.Get("quickClickDelay", Global::qi.fun.quickClick.delay);
+		cfg.Get("quickClickMode", Global::qi.fun.quickClick.mode);
+		cfg.Get("showClockState", Global::qi.fun.showClock.state);
+		cfg.Get("showClockKey", Global::qi.fun.showClock.key);
+		cfg.Get("wndActiveState", Global::qi.fun.wndActive.state);
+		cfg.Get("wndActiveName", scache); Global::qi.fun.wndActive.name = String::toWString(scache);
+	}
+	else
+	{
+		Global::qi.set.defOn = 1;
+		Global::qi.set.key = VK_F8;
+		Global::qi.set.recKey = VK_F8;
+		Global::qi.set.showTips = 1;
+		Global::qi.set.audFx = 0;
+		Global::qi.set.minMode = 0;
+		Global::qi.set.zoomBlock = 0;
+		Global::qi.fun.quickClick.state = 1;
+		Global::qi.fun.quickClick.key = VK_LBUTTON;
+		Global::qi.fun.quickClick.delay = 200;
+		Global::qi.fun.quickClick.mode = 0;
+		Global::qi.fun.showClock.state = 0;
+		Global::qi.fun.showClock.key = VK_MENU;
+		Global::qi.fun.wndActive.state = 0;
+		Global::qi.fun.wndActive.name = L"";
+	}
 
 	File::FindFileStruct files = File::FindFile(L"macro\\*.json");
 
@@ -401,4 +408,67 @@ static std::wstring NameFilter(std::wstring name)
 		}
 	}
 	return L"";
+}
+
+static DWORD CALLBACK ThreadWndActive(LPVOID)
+{
+	while (Global::qi.state)
+	{
+		Global::qi.fun.wndActive.wnd = FindWindowW(0, Global::qi.fun.wndActive.name.c_str());
+		if (Global::qi.fun.wndActive.wnd)
+		{
+			bool active = (GetForegroundWindow() == Global::qi.fun.wndActive.wnd);
+			if (!Global::qi.fun.wndActive.active && active)
+			{
+				Global::qi.fun.wndActive.active = 1;
+
+				if (Global::qi.set.showTips)
+				{
+					TipsWindow::Popup(L"已启用 - 窗口内", RGB(0xA0, 0xFF, 0xC0));
+				}
+
+			}
+			else if (Global::qi.fun.wndActive.active && !active)
+			{
+				Global::qi.fun.wndActive.active = 0;
+
+				if (Global::qi.set.showTips)
+				{
+					TipsWindow::Popup(L"已禁用 - 窗口外", RGB(0xFF, 0x80, 0x80));
+				}
+			}
+		}
+		sleep(100);
+	}
+	Global::qi.fun.wndActive.thread = 0;
+	return 0;
+}
+
+static void HookState(bool state)
+{
+	if (state)
+	{
+		if (!InputHook::Start(InputHook::all, 1)) MsgBox::Error(L"创建输入Hook失败，检查是否管理员身份运行 或 是否被安全软件拦截。");
+	}
+	else InputHook::Stop(InputHook::all);
+}
+
+static void QiState(bool state)
+{
+	if (state)
+	{
+		Global::qi.state = 1;
+		Global::qi.ReScreen();
+		TipsWindow::screen = Global::qi.screen;
+		TipsWindow::Popup(UI::qiOn);
+		if (Global::qi.set.audFx)Media::WavePlay(audfx.on);
+		if (Global::qi.fun.wndActive.state) Global::qi.fun.wndActive.thread = Thread::Start(ThreadWndActive);
+		else Global::qi.fun.wndActive.active = 1;
+	}
+	else
+	{
+		Global::qi.state = 0;
+		TipsWindow::Popup(UI::qiOff, RGB(0xFF, 0x50, 0x50));
+		if (Global::qi.set.audFx)Media::WavePlay(audfx.off);
+	}
 }

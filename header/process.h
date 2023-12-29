@@ -18,8 +18,8 @@ namespace CG {
 
 		static std::wstring exeName() { return File::FileName(exePath()); }
 
-		static bool isRunning(LPCWSTR instanceName) { CreateMutexW(0, 0, instanceName); if (GetLastError() == ERROR_ALREADY_EXISTS) return 1; return 0; }
-		static void RunOnce(LPCWSTR instanceName) { CreateMutexW(0, 0, instanceName); if (GetLastError() == ERROR_ALREADY_EXISTS) exit(0); }
+		static bool isRunning(LPCWSTR instanceName) { HANDLE handle = CreateMutexW(0, 0, instanceName); if (GetLastError() == ERROR_ALREADY_EXISTS) { CloseHandle(handle); return 1; } CloseHandle(handle); return 0; }
+		static void RunOnce(LPCWSTR instanceName) { HANDLE handle = CreateMutexW(0, 0, instanceName); if (GetLastError() == ERROR_ALREADY_EXISTS) { CloseHandle(handle); exit(0); } }
 
 		// include .exe, return pid
 		static DWORD State(const std::wstring exe) {
@@ -48,32 +48,42 @@ namespace CG {
 			return pids;
 		}
 
-		static HANDLE Start(const std::wstring cmdLine, const bool showWindow = 1, const DWORD creationFlags = CREATE_NEW_CONSOLE, std::wstring workPath = L"") {
+		static bool Open(std::wstring file, UINT showCmd = SW_NORMAL, LPCWSTR cmdLine = 0, LPCWSTR workPath = 0) {
+			std::wstring _workPath;
+			if (workPath) _workPath = workPath; else { _workPath = File::PathLast(File::ParseCmd(file, 0).path); if (!File::FolderState(_workPath)) _workPath = runPath(); }
+			return ShellExecuteW(0, L"open", file.c_str(), cmdLine, _workPath.c_str(), showCmd);
+		}
+		static bool Open(File::CmdLine cl, UINT showCmd = SW_NORMAL, LPCWSTR workPath = 0) {
+			std::wstring path = cl.path;
+			if (cl.param.size())
+			{ 
+				std::wstring cmd; for (uint32 u = 0; u < cl.param.size(); u++) cmd += std::wstring(L" ") + cl.param[u];
+				return Open(path, showCmd, cmd.c_str());
+			}
+			return Open(path, showCmd, 0, workPath);
+		}
+
+		static bool Start(std::wstring cmdLine, UINT showCmd = SW_NORMAL, LPCWSTR workPath = 0, DWORD creationFlags = CREATE_NEW_CONSOLE | CREATE_UNICODE_ENVIRONMENT) {
 			STARTUPINFO si = { 0 };
 			si.cb = sizeof(STARTUPINFO);
 			PROCESS_INFORMATION pi = { 0 };
-			LPWSTR cmd = new WCHAR[cmdLine.length() + 1];
-
-			wcscpy_s(cmd, cmdLine.length() + 1, cmdLine.c_str());
-			if (workPath == L"")
-			{
-				File::CmdLine cmdLines = File::toCmdLine(cmdLine);
-				if (cmdLines.size()) workPath = File::PathLast(cmdLines[0]);
-				if (!File::FolderState(workPath)) workPath = runPath();
-			}
-			if (!showWindow) {
-				si.dwFlags = STARTF_USESHOWWINDOW;
-				si.wShowWindow = SW_HIDE;
-			}
-			if (CreateProcessW(0, cmd, 0, 0, 0, creationFlags, 0, workPath.c_str(), &si, &pi)) {
+			std::wstring _workPath;
+			if (workPath) _workPath = workPath; else { _workPath = File::PathLast(File::ParseCmd(cmdLine, 0).path); if (!File::FolderState(_workPath)) _workPath = runPath(); }
+			if (showCmd != SW_NORMAL) si.dwFlags = STARTF_USESHOWWINDOW, si.wShowWindow = showCmd;
+			if (CreateProcessW(0, (LPWSTR)cmdLine.c_str(), 0, 0, 0, creationFlags, 0, _workPath.c_str(), &si, &pi)) {
 				CloseHandle(&pi.hThread);
 				CloseHandle(&pi.hProcess);
+				return 1;
 			}
-			delete[] cmd;
-			return 0;
+			else return 0;
+		}
+		static bool Start(File::CmdLine cl, UINT showCmd = SW_NORMAL, LPCWSTR workPath = 0, DWORD creationFlags = CREATE_NEW_CONSOLE | CREATE_UNICODE_ENVIRONMENT)
+		{
+			std::wstring cmd = cl.path; for (uint32 u = 0; u < cl.param.size(); u++) cmd += std::wstring(L" ") + cl.param[u];
+			return Start(cl.path, showCmd, workPath, creationFlags);
 		}
 
-		static void Close(const std::wstring exe) {
+		static void Close(std::wstring exe) {
 			PROCESSENTRY32W pe = { 0 };
 			pe.dwSize = sizeof(PROCESSENTRY32W);
 			HANDLE hProcShot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);

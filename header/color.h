@@ -6,6 +6,53 @@
 #include "string.h"
 
 namespace CG {
+	struct Rgb {
+		Rgb() {}
+		Rgb(byte r, byte g, byte b) { this->r = r, this->g = g, this->b = b; }
+		Rgb(COLORREF rgb) { this->r = GetRValue(r), this->g = GetGValue(g), this->b = GetBValue(b); }
+		byte b = 0;
+		byte g = 0;
+		byte r = 0;
+	};
+
+	struct Rgba {
+		Rgba() {}
+		Rgba(byte r, byte g, byte b, byte a) { this->r = r, this->g = g, this->b = b, this->a = a; }
+		Rgba(COLORREF rgba) { this->r = GetRValue(r), this->g = GetGValue(g), this->b = GetBValue(b), this->a = GetAValue(a); }
+		byte a = 0;
+		byte b = 0;
+		byte g = 0;
+		byte r = 0;
+	};
+
+	template<class T>
+	class PointMap
+	{
+		T* _map = 0;
+		uint32 _width = 0;
+		uint32 _height = 0;
+
+	public:
+		PointMap() { }
+		PointMap(uint32 width, uint32 height) { create(width, height); }
+		~PointMap() { release(); }
+		void operator=(const PointMap& pointMap) { copy_s(pointMap); }
+		T* operator[](uint32 row) { return _map + (_width * row); }
+		T* accessMap() { return _map; }
+		T& accessPoint(uint32 row, uint32 col) { return _map[((_width * row) + col)]; }
+		uint32 bytes() { return ((_width * _height) * sizeof(T)); }
+		uint32 width() { return _width; }
+		uint32 height() { return _height; }
+		void create(uint32 width = 1, uint32 height = 1) { release(); if (width && height) { _width = width; _height = height; _map = new T[_width * _height]; } }
+		void copy(const PointMap& pointMap) { release(); create(pointMap._width, pointMap._height); memcpy_s(_map, _width * _height, pointMap._map, pointMap._width * pointMap._height); }
+		void copy_s(const PointMap& pointMap) { release(); create(pointMap._width, pointMap._height); uint32 size = _width * _height; for (uint32 u = 0; u < size; u++) _map[u] = pointMap._map[u]; }
+		void fill(const T& point) { for (uint32 u = 0; u < (_width * _height); u++) _map[u] = point; }
+		void release() { if (_map) { delete[] _map; _map = 0; } _width = 0; _height = 0; }
+	};
+
+	typedef PointMap<Rgb> RgbMap;
+	typedef PointMap<Rgba> RgbaMap;
+
 	class Color
 	{
 	public:
@@ -123,7 +170,6 @@ namespace CG {
 			COLORREF pixel;
 			image.Create(rect.right - rect.left, rect.bottom - rect.top, 24);
 			BitBlt(image.GetDC(), 0, 0, rect.right - rect.left, rect.bottom - rect.top, hdc, rect.left, rect.top, SRCCOPY);
-
 			long x = 0, y = 0;
 
 			for (int y = 0; y < rect.bottom - rect.top; y++)

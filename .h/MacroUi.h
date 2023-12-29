@@ -11,11 +11,12 @@ class MacroUi : public QWidget
 	Q_OBJECT
 
 public:
+	bool working = 0;
+
 	MacroUi() {}
 
 	MacroUi(QWidget* parent) : QWidget(parent)
 	{
-		this->main = parent;
 		ui.setupUi(this);
 		setWindowFlags(Qt::FramelessWindowHint);
 
@@ -28,7 +29,6 @@ public:
 private:
 
 	Ui::MacroUiClass ui;
-	QWidget* main = 0;
 	Scripts& scripts = Global::qi.scripts;
 	QTimer* timer;
 
@@ -159,12 +159,11 @@ private slots:
 	void OnBnRec()
 	{
 		scripts.AddNull();
-		RecordUi rw(main, scripts.Get().actions);
-		main->hide();
-		Global::qi.HookState(1);
+		RecordUi rw(scripts.Get().actions);
+
+		HookState(1);
 		Global::qi.state = 0;
 		Global::qi.rec = &rw;
-		
 		if (Global::qi.set.recKey & 0xFFFF)
 		{
 			std::wstring text = L"按下";
@@ -173,9 +172,12 @@ private slots:
 			TipsWindow::Show(text, RGB(0x20, 0xFF, 0x20));
 		}
 
+		working = 1;
+		parentWidget()->hide();
 		rw.exec();
-		main->show();
-		Global::qi.HookState(0);
+		working = 0;
+		parentWidget()->show();
+		HookState(0);
 
 		LoadJson();
 		TbUpdate();
@@ -204,7 +206,12 @@ private slots:
 
 		EditUi edit(scripts[pos].actions);
 		edit.setWindowTitle(u8"编辑 - " + QString::fromWCharArray(scripts[pos].name.c_str()));
+
+		working = 1;
+		parentWidget()->hide();
 		edit.exec();
+		working = 0;
+		parentWidget()->show();
 
 		SaveScript(scripts[pos]);
 		LoadJson();

@@ -13,6 +13,15 @@
 #define GetMod(wParam) (LOWORD(wParam))
 #define GetVk(wParam) (HIWORD(wParam))
 
+/*
+	HWND hWnd = FindWindowW(L"MUTEX_PROCESS_CLASS", L"MUTEX_PROCESS_WINDOW");
+	while (hWnd)
+	{
+		SendMessageW(hWnd, WM_CLOSE, 0, 0);
+		hWnd = FindWindowW(L"MUTEX_PROCESS_CLASS", L"MUTEX_PROCESS_WINDOW");
+	}
+*/
+
 namespace CG {
 	class Window
 	{
@@ -47,6 +56,15 @@ namespace CG {
 			return CreateWindowExW(exStyle, className, wndName, style, x, y, width, height, parent, menu, instance, 0);
 		}
 
+		static std::wstring text(HWND wnd)
+		{
+			int length =  GetWindowTextLengthW(wnd) + 1;
+			LPWSTR name = new WCHAR[length];
+			GetWindowTextW(wnd, name, length);
+			std::wstring result = name;
+			delete[] name;
+			return result;
+		}
 
 		//size: pixel, weight: 0 ~ 900, font: name
 		static HFONT setFont(UINT size, USHORT weight = 0, LPCWSTR font = L"Microsoft YaHei") {

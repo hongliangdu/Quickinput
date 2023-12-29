@@ -9,7 +9,7 @@ class MoreUi : public QDialog
 
 public:
 
-	MoreUi(QWidget* parent = 0) : QDialog(parent)
+	MoreUi() : QDialog()
 	{
 		ui.setupUi(this);
 		setWindowFlags(Qt::FramelessWindowHint);
@@ -34,8 +34,5 @@ private:
 
 private slots:
 
-	void OnBnClose()
-	{
-		hide();
-	}
+	void OnBnClose() { hide(); }
 };

@@ -8,12 +8,10 @@ class RecordUi : public QDialog
 	Q_OBJECT
 
 public:
-	RecordUi(QWidget* main, Actions& actions) : QDialog(main)
+	RecordUi(Actions& actions) : QDialog()
 	{
-		this->main = main;
 		this->actions = &actions;
 		ui.setupUi(this);
-		setParent(0);
 		setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
 		setMouseTracking(true);
 
@@ -72,7 +70,6 @@ public:
 
 private:
 	Ui::RecordUiClass ui;
-	QWidget* main = 0;
 	Actions* actions = 0;
 	long long tim = 0;
 	bool start = 0, begin = 0, click = 0;
@@ -115,7 +112,6 @@ public slots:
 		TipsWindow::Hide();
 		Global::qi.rec = 0;
 		Global::qi.scripts.DelBack();
-		main->show();
 		close();
 	}
 };
