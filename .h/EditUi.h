@@ -150,42 +150,14 @@ private:
 
 	//------------------------Control Data
 
-	void SetHkKey(BYTE key)
-	{
-		ui.hkKey->VirtualKey(key);
-	}
-	void SetEtPos(RECT pt)
-	{
-		ui.etX->setText(QString::number(pt.left));
-		ui.etY->setText(QString::number(pt.top));
-		if (pt.right > -1) ui.etMoveRand->setText(QString::number(pt.right));
-	}
-	void SetEtDelay(POINT pt)
-	{
-		ui.etTime->setText(QString::number(pt.x));
-		ui.etDelayRand->setText(QString::number(pt.y));
-	}
+	void SetHkKey(byte key) { ui.hkKey->VirtualKey(key); }
+	void SetEtPos(RECT pt) { ui.etX->setText(QString::number(pt.left)); ui.etY->setText(QString::number(pt.top)); if (pt.right > -1) ui.etMoveRand->setText(QString::number(pt.right)); }
+	void SetEtDelay(POINT pt) { ui.etTime->setText(QString::number(pt.x)); ui.etDelayRand->setText(QString::number(pt.y)); }
 	void SetRbColorMode(bool mode) { if (mode) ui.rbColorNot->setChecked(1); else ui.rbColorGet->setChecked(1); }
 	void SetChbColorMove(bool state) { ui.chbColorMove->setChecked(state); }
-	void SetEtColorRect(RECT rect)
-	{
-		ui.etColorL->setText(QString::number(rect.left));
-		ui.etColorT->setText(QString::number(rect.top));
-		ui.etColorR->setText(QString::number(rect.right));
-		ui.etColorB->setText(QString::number(rect.bottom));
-	}
-	void SetEtColorValue(COLORREF color)
-	{
-		ui.etR->setText(QString::number(GetRValue(color)));
-		ui.etG->setText(QString::number(GetGValue(color)));
-		ui.etB->setText(QString::number(GetBValue(color)));
-		ui.etCX->setText(QString::number(GetAValue(color)));
-	}
-	void SetColor(COLORREF color) {
-		ui.etR->setText(QString::number(GetRValue(color)));
-		ui.etG->setText(QString::number(GetGValue(color)));
-		ui.etB->setText(QString::number(GetBValue(color)));
-	}
+	void SetEtColorRect(RECT rect) { ui.etColorL->setText(QString::number(rect.left)); ui.etColorT->setText(QString::number(rect.top)); ui.etColorR->setText(QString::number(rect.right)); ui.etColorB->setText(QString::number(rect.bottom)); }
+	void SetEtColorValue(Rgba color) { ui.etR->setText(QString::number(color.r)); ui.etG->setText(QString::number(color.g)); ui.etB->setText(QString::number(color.b)); ui.etCX->setText(QString::number(color.a)); }
+	void SetColor(Rgba color) { ui.etR->setText(QString::number(color.r)); ui.etG->setText(QString::number(color.g)); ui.etB->setText(QString::number(color.b)); }
 	void SetEtLoopCount(uint32 count) { ui.etCount->setText(QString::number(count)); }
 
 	Action GetKey() {
@@ -253,8 +225,7 @@ private:
 			if (g > colorMax) g = colorMax;
 			if (b > colorMax) b = colorMax;
 			if (ex > colorMax) ex = colorMax;
-			COLORREF rgbe = RGBA(r, g, b, ex);
-			action.color.rgbe = rgbe;
+			action.color.rgbe.set(r, g, b, ex);
 		}
 		return action;
 	}
@@ -388,13 +359,13 @@ private:
 				ps += u8",";
 				ps += QString::number(actions[0][u].color.rect.bottom);
 				ps += u8")　(";
-				ps += QString::number(GetRValue(actions[0][u].color.rgbe));
+				ps += QString::number(actions[0][u].color.rgbe.r);
 				ps += u8",";
-				ps += QString::number(GetGValue(actions[0][u].color.rgbe));
+				ps += QString::number(actions[0][u].color.rgbe.g);
 				ps += u8",";
-				ps += QString::number(GetBValue(actions[0][u].color.rgbe));
+				ps += QString::number(actions[0][u].color.rgbe.b);
 				ps += u8",";
-				ps += QString::number(GetAValue(actions[0][u].color.rgbe));
+				ps += QString::number(actions[0][u].color.rgbe.a);
 				if (actions[0][u].color.unfind) ps += u8")　未找到";
 				else
 				{

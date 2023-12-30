@@ -183,6 +183,9 @@ font-size:14px;</string>
            <property name="focusPolicy">
             <enum>Qt::ClickFocus</enum>
            </property>
+           <property name="toolTip">
+            <string>关闭</string>
+           </property>
            <property name="styleSheet">
             <string notr="true">QPushButton{background-color:#E00;width:20px;height:20px;border-radius:10px;}
 QPushButton:hover{background-color:#C00;}</string>
@@ -248,7 +251,7 @@ QPushButton:hover{background-color:#C00;}</string>
            <x>0</x>
            <y>0</y>
            <width>776</width>
-           <height>1097</height>
+           <height>1080</height>
           </rect>
          </property>
          <property name="styleSheet">
@@ -290,13 +293,12 @@ QPushButton:hover{background-color:#C00;}</string>
              <string notr="true">font-family:&quot;Microsoft YaHei&quot;;font-size:12px;</string>
             </property>
             <property name="text">
-             <string>➤注意：任何点击操作均需要最小化窗口
-➤CPS计算：1000 ÷ 间隔时间，50CPS = 1000 ÷ 20
+             <string>➤CPS计算：1000 ÷ 间隔时间，50CPS = 1000 ÷ 20
 
 
 ————————————————————基本设置————————————————————
 
-➤初次打开时：切换 [设置] ➜ [全局开关键] ➜ 点击输入框后按下所需按键
+➤初次打开时：切换 [设置] ➜ [开启/停止键] ➜ 点击输入框后按下所需按键
 
 ➤简单设置连点器：切换 [功能] ➜ 勾选快捷连点 ➜ 点击输入框并按下所需按键 ➜ 输入间隔时间（毫秒）越小越快 ➜ 选择模式
 
@@ -307,7 +309,7 @@ QPushButton:hover{background-color:#C00;}</string>
 ㅤㅤ2.切换 [触发]：
 ㅤㅤㅤㅤ选中一个宏 ➜ 点击禁用变为启用 ➜ 设置模式 ➜ 点击输入框后按下所需按键 ➜ 输入次数
 
-➤开始使用：最小化窗口 ➜ 按下 [全局开关键] 并且弹出 [已启用] ➜ 按下快捷连点 / 宏的设置的快捷键
+➤开始使用：按下 [开启/停止键] 并且弹出 [已启用] ➜ 按下快捷连点 / 宏的设置的快捷键
 
 
 ————————————————————编辑窗口————————————————————
@@ -425,7 +427,7 @@ QPushButton:hover{background-color:#C00;}</string>
            <x>0</x>
            <y>0</y>
            <width>776</width>
-           <height>2620</height>
+           <height>2671</height>
           </rect>
          </property>
          <property name="styleSheet">
@@ -467,7 +469,10 @@ QPushButton:hover{background-color:#C00;}</string>
              <string notr="true">font-family:&quot;Microsoft YaHei&quot;;font-size:12px;</string>
             </property>
             <property name="text">
-             <string>2023-12-30
+             <string>2023-12-31
+ㅤㅤ1：优化查找颜色速度
+
+2023-12-30
 ㅤㅤ1：增加默认启用
 ㅤㅤ2：增加默认参数
 

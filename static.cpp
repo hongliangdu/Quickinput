@@ -1,5 +1,4 @@
 #pragma once
-#include ".h/QuickInputDef.h"
 #include "static.h"
 
 QuickInputStruct Global::qi;

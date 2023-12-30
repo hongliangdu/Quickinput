@@ -2,7 +2,6 @@
 
 #include <windows.h>
 #include <string>
-#include <sstream>
 #include <math.h>
 #include "base.h"
 
@@ -10,27 +9,23 @@ namespace CG {
 	class String
 	{
 	public:
-
+		static size_t Length(const char* str) { return strlen(str); }
+		static size_t Length(const wchar_t* str) { return wcslen(str); }
+		static int Compare(const char* str1, const char* str2) { return strcmp(str1, str2); }
+		static int Compare(const wchar_t* str1, const wchar_t* str2) { return wcscmp(str1, str2); }
+		static errno_t Copy(char* buffer, uint32 size, const char* res) { return strcpy_s(buffer, size, res); }
+		static errno_t Copy(wchar_t* buffer, uint32 size, const wchar_t* res) { return wcscpy_s(buffer, size, res); }
+		static errno_t Cat(char* buffer, uint32 size, const char* res) { return strcat_s(buffer, size, res); }
+		static errno_t Cat(wchar_t* buffer, uint32 size, const wchar_t* res) { return wcscat_s(buffer, size, res); }
+		static int Printf(char* buffer, uint32 size, const char* format, ...) { va_list vas; va_start(vas, format); int count = _vsprintf_p(buffer, size, format, vas); va_end(vas); return count; }
+		static int Printf(wchar_t* buffer, uint32 size, const wchar_t* format, ...) { va_list vas; va_start(vas, format); int count = _vswprintf_p(buffer, size, format, vas); va_end(vas); return count; }
+		
 		static std::string toString(char val) { char str[] = { val, '\0' }; return str; }
 		static std::string toString(wchar_t val) { char str[] = { (char)val, '\0' }; return str; }
 		static std::string toString(const char* val) { return val; }
-		static std::string toString(const wchar_t* val) {
-			int len = WideCharToMultiByte(CP_ACP, 0, val, -1, 0, 0, 0, 0);
-			char* cache = new char[len];
-			WideCharToMultiByte(CP_ACP, 0, val, -1, cache, len, 0, 0);
-			std::string str = cache;
-			delete[] cache;
-			return str;
-		}
+		static std::string toString(const wchar_t* val) { int len = WideCharToMultiByte(CP_ACP, 0, val, -1, 0, 0, 0, 0); char* cache = new char[len]; WideCharToMultiByte(CP_ACP, 0, val, -1, cache, len, 0, 0); std::string str = cache; delete[] cache; return str; }
 		static std::string toString(std::string val) { return val; }
-		static std::string toString(std::wstring val) {
-			int len = WideCharToMultiByte(CP_ACP, 0, val.c_str(), -1, 0, 0, 0, 0);
-			char* cache = new char[len];
-			WideCharToMultiByte(CP_ACP, 0, val.c_str(), -1, cache, len, 0, 0);
-			std::string str = cache;
-			delete[] cache;
-			return str;
-		}
+		static std::string toString(std::wstring val) { int len = WideCharToMultiByte(CP_ACP, 0, val.c_str(), -1, 0, 0, 0, 0); char* cache = new char[len]; WideCharToMultiByte(CP_ACP, 0, val.c_str(), -1, cache, len, 0, 0); std::string str = cache; delete[] cache; return str; }
 		static std::string toString(bool val) { if (val) return "true"; return "false"; }
 		static std::string toString(int8 val) { return std::to_string((int32)val); }
 		static std::string toString(uint8 val) { return std::to_string((uint32)val); }
@@ -43,27 +38,17 @@ namespace CG {
 		static std::string toString(float val) { return std::to_string(val); }
 		static std::string toString(double val) { return std::to_string(val); }
 		static std::string toString(long double val) { return std::to_string(val); }
-		static std::string toString(void* val) { std::stringstream ss; ss << val; return ss.str(); }
-
+		static std::string toString(void* val) { char str[] = "0xFFFFFFFFFFFFFFFF"; sprintf_s(str, 19, "%p", val); return str; }
+		static std::string toString(SIZE val) { return std::to_string(val.cx) + std::string(", ") + std::to_string(val.cy); }
+		static std::string toString(POINT val) { return std::to_string(val.x) + std::string(", ") + std::to_string(val.y); }
+		static std::string toString(RECT val) { return std::to_string(val.left) + std::string(", ") + std::to_string(val.top) + std::string(", ") + std::to_string(val.right) + std::string(", ") + std::to_string(val.bottom); }
+		template<typename T>
+		static std::string toString(T* arr, uint32 len) { std::string str; for (uint32 p = 0; p < len - 1; p++) str += toString(arr[p]) + ", "; str += toString(arr[len - 1]); return str; }
 		static std::wstring toWString(char val) { wchar_t str[] = { (wchar_t)val, L'\0' }; return str; }
 		static std::wstring toWString(wchar_t val) { wchar_t str[] = { val, L'\0' }; return str; }
-		static std::wstring toWString(const char* val) {
-			int len = MultiByteToWideChar(CP_ACP, 0, val, -1, 0, 0);
-			wchar_t* cache = new wchar_t[len];
-			MultiByteToWideChar(CP_ACP, 0, val, -1, cache, len);
-			std::wstring str = cache;
-			delete[] cache;
-			return str;
-		}
+		static std::wstring toWString(const char* val) { int len = MultiByteToWideChar(CP_ACP, 0, val, -1, 0, 0); wchar_t* cache = new wchar_t[len]; MultiByteToWideChar(CP_ACP, 0, val, -1, cache, len); std::wstring str = cache; delete[] cache; return str; }
 		static std::wstring toWString(const wchar_t* val) { return val; }
-		static std::wstring toWString(std::string val) {
-			int len = MultiByteToWideChar(CP_ACP, 0, val.c_str(), -1, 0, 0);
-			wchar_t* cache = new wchar_t[len];
-			MultiByteToWideChar(CP_ACP, 0, val.c_str(), -1, cache, len);
-			std::wstring str = cache;
-			delete[] cache;
-			return str;
-		}
+		static std::wstring toWString(std::string val) { int len = MultiByteToWideChar(CP_ACP, 0, val.c_str(), -1, 0, 0); wchar_t* cache = new wchar_t[len]; MultiByteToWideChar(CP_ACP, 0, val.c_str(), -1, cache, len); std::wstring str = cache; delete[] cache; return str; }
 		static std::wstring toWString(std::wstring val) { return val; }
 		static std::wstring toWString(bool val) { if (val) return L"true"; return L"false"; }
 		static std::wstring toWString(int8 val) { return std::to_wstring((int32)val); }
@@ -79,100 +64,52 @@ namespace CG {
 		static std::wstring toWString(float val) { return std::to_wstring(val); }
 		static std::wstring toWString(double val) { return std::to_wstring(val); }
 		static std::wstring toWString(long double val) { return std::to_wstring(val); }
-		static std::wstring toWString(void* val) { std::wstringstream ss; ss << val; return ss.str(); }
+		static std::wstring toWString(void* val) { wchar_t str[] = L"0xFFFFFFFFFFFFFFFF"; swprintf_s(str, 19, L"%p", val); return str; }
+		static std::wstring toWString(SIZE val) { return std::to_wstring(val.cx) + std::wstring(L", ") + std::to_wstring(val.cy); }
+		static std::wstring toWString(POINT val) { return std::to_wstring(val.x) + std::wstring(L", ") + std::to_wstring(val.y); }
+		static std::wstring toWString(RECT val) { return std::to_wstring(val.left) + std::wstring(L", ") + std::to_wstring(val.top) + std::wstring(L", ") + std::to_wstring(val.right) + std::wstring(L", ") + std::to_wstring(val.bottom); }
+		template<typename T>
+		static std::wstring toWString(T* arr, uint32 len) { std::wstring str; for (uint32 p = 0; p < len - 1; p++) str += toWString(arr[p]) + L", "; str += toWString(arr[len - 1]); return str; }
+		
+		static std::string toLower(std::string str) { std::string result; for (size_t s = 0; s < str.length(); s++) result += tolower(str[s]); return result; }
+		static std::wstring toLower(std::wstring str) { std::wstring result; for (size_t s = 0; s < str.length(); s++) result += towlower(str[s]); return result; }
 
-		static std::wstring toLower(std::wstring str)
+		template<class T>
+		struct xcstring
 		{
-			std::wstring result;
-			for (size_t s = 0; s < str.length(); s++)
+			T* str = 0;
+			uint32 len = 0;
+			~xcstring() { emp(); }
+
+			void operator=(const T* res) { cpy(res); }
+			void cpy(const T* res)
 			{
-				result += towlower(str[s]);
+				emp();
+				len = Length(res) + 1;
+				str = new T[len];
+				Copy(str, len, res);
 			}
-			return result;
-		}
-
-		static std::string toLower(std::string str)
-		{
-			std::string result;
-			for (size_t s = 0; s < str.length(); s++)
+			void cpy(const xcstring& res)
 			{
-				result += tolower(str[s]);
+				emp();
+				len = res.len;
+				str = new T[len];
+				Copy(str, len, res.str);
 			}
-			return result;
-		}
-
-		static LPCWSTR toWString(int* arr, UINT len) {
-			WCHAR str[1024];
-			swprintf_s(str, 1024, L"%d", *arr);
-			for (UINT n = 1; n < len; n++) {
-				swprintf_s(str, 1024, L"%s, %d", str, *(arr + n));
-			}
-			return str;
-		}
-
-		static std::wstring toHex(UINT hex)
-		{
-			wchar_t result[] = L"0x00000000";
-			UINT c = 2, b = 8, n, r;
-			do
+			void emp()
 			{
-				n = (BYTE)((hex & ((UINT)0xF << (UINT)((b - 1) * 4u))) >> (UINT)((b - 1) * 4u)), r = 0;
-				while (1) { if (r == n) break; r++; }
-				if (r)
-				{
-					if (r < 10) result[c] = L'0' + r;
-					else result[c] = 55 + r;
-					c++;
-				}
-				b--;
-			} while (b > 0);
-			result[c] = L'\0';
-			return result;
-		}
-
-		static UINT HexToNum(LPCWSTR hex)
-		{
-			UINT len = (UINT)wcslen(hex);
-			if (len < 3 || len > 10) return 0;
-			if (hex[0] != '0') return 0;
-			if (hex[1] != 'x' && hex[1] != 'X') return 0;
-
-			UINT result = 0;
-			UINT c = len - 1, b = 0, r;
-			while (c > 1)
-			{
-				while (1)
-				{
-					r = 0;
-					if (hex[c] >= '0' && hex[c] <= '9')
-					{
-						if (r == hex[c] - '0') break;
-					}
-					else if (hex[c] >= 'A' && hex[c] <= 'F')
-					{
-						if (r == hex[c] - 55) break;
-					}
-					r++;
-				}
-				result |= r << (b * 4);
-				c--, b++;
-			};
-			return result;
-		}
-
-		static bool Compare(LPCWSTR str1, LPCWSTR str2) { return !wcscmp(str1, str2); }
-
-		static bool Compare(LPCSTR str1, LPCSTR str2) { return !strcmp(str1, str2); }
-
-		static UINT Find(LPCWSTR str, LPCWSTR strFind) {
-			for (UINT len = (UINT)wcslen(str), lenF = (UINT)wcslen(strFind), n = 0, f = 0; n < len; n++) {
-				if (str[n] == strFind[f]) {
-					f++;
-					if (f == lenF) return n - lenF + 1;
-				}
-				else f = 0;
+				if (str) delete[] str;
+				len = 0;
 			}
-			return 0;
-		}
+			void resize(uint32 size)
+			{
+				emp();
+				len = size;
+				new T[len];
+			}
+		};
+
+		typedef xcstring<char> cstring;
+		typedef xcstring<wchar_t> wcstring;
 	};
 }

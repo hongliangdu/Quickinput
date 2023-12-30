@@ -3,13 +3,8 @@
 #include <QFont>
 #include <qdesktopwidget.h>
 #include <qapplication.h>
-#include "TipsWindow.h"
-#include "Action.h"
-#include "../static.h"
-
-struct QuickInputStruct;
-
-struct Global { static QuickInputStruct qi; };
+#include "D:/#CGDATA/Code/cpp/cg.h"
+#include "D:/#CGDATA/Code/cpp/CJsonObject.h"
 
 struct UI {
 	static std::wstring qiOn;
@@ -36,6 +31,77 @@ struct UI {
 	static QString rcStart;
 	static QString rcStop;
 	static QString rcClose;
+};
+
+struct Action;
+typedef List<Action> Actions;
+
+struct Action
+{
+	enum
+	{
+		_none,
+		_end,
+		_delay,
+		_key,
+		_mouse,
+		_text,
+		_color,
+		_loop,
+		_loopEnd
+	};
+
+	struct Delay { uint32 ms; uint32 ex; };
+	struct Key { enum { up, down, click }; uint32 vk = 0; uint32 state = up; };
+	struct Mouse { uint32 x = 0; uint32 y = 0; uint32 ex = 0; bool move = 0; };
+	struct Text { String::wcstring str; };
+	struct Color { Rgba rgbe = 0; RECT rect = { 0 }; bool unfind = 0; bool move = 0; Actions next; };
+	struct Loop { uint32 count; Actions next; };
+
+	union
+	{
+		byte memsize[36];
+		Delay delay;
+		Key key;
+		Mouse mouse;
+		Text text;
+		Color color;
+		Loop loop;
+	};
+
+	uint32 type = _none;
+	std::wstring mark;
+
+	Action() { Emp(); }
+	Action(const uint32 actionType) { Emp(); type = actionType; }
+	Action(const Action& action) { Cpy(action); }
+	~Action() { Emp(); }
+
+	void operator=(const Action& action) { Cpy(action); }
+
+	void Cpy(const Action& action)
+	{
+		Emp();
+		mark = action.mark;
+		switch (action.type)
+		{
+		case _end: type = _end; break;
+		case _delay: type = _delay; delay = action.delay; break;
+		case _key: type = _key; key = action.key; break;
+		case _mouse: type = _mouse; mouse = action.mouse; break;
+		case _text: type = _text; text.str.cpy(action.text.str); break;
+		case _color: type = _color; color = action.color; break;
+		case _loop: type = _loop; loop = action.loop; break;
+		case _loopEnd: type = _loopEnd; break;
+		default: type = _none; break;
+		}
+	}
+
+	void Emp() {
+		if (type == _text) text.str.emp();
+		type = _none;
+		mark = L""; memset(&memsize, 0, 36);
+	}
 };
 
 struct Script
@@ -112,12 +178,16 @@ public:
 
 	void ReScreen()
 	{
+		ReleaseDC(0, hdc);
+		hdc = GetDC(0);
 		screen = System::screenSize();
 		QRect qr = QApplication::desktop()->screenGeometry();
 		vscreen.cx = qr.width();
 		vscreen.cy = qr.height();
 	}
 };
+
+struct Global { static QuickInputStruct qi; };
 
 static POINT RelToAbs(POINT rel) { return { (long)(((double)rel.x / ((double)Global::qi.screen.cx - 1.0)) * 10000.0), (long)(((double)rel.y / ((double)Global::qi.screen.cy - 1.0)) * 10000.0) }; }
 
@@ -180,7 +250,7 @@ static void _stdcall SaveItem(neb::CJsonObject& jActions, Actions& actions)
 			jItem.Add("top", (int32)actions[u].color.rect.top);
 			jItem.Add("right", (int32)actions[u].color.rect.right);
 			jItem.Add("bottom", (int32)actions[u].color.rect.bottom);
-			jItem.Add("rgbe", (uint32)actions[u].color.rgbe);
+			jItem.Add("rgbe", (uint32)actions[u].color.rgbe.toCOLORREF());
 			SaveItem(jNext, actions[u].color.next);
 			jItem.Add("next", jNext);
 		}
@@ -254,11 +324,11 @@ static void _stdcall LoadItem(const neb::CJsonObject jActions, Actions& actions)
 		neb::CJsonObject jNext;
 		jActions.Get(u, jItem);
 
-		int32 i32 = 0;
-		jItem.Get("type", i32);
-		if (i32)
+		uint32 ui32 = 0;
+		jItem.Get("type", ui32);
+		if (ui32)
 		{
-			switch (i32)
+			switch (ui32)
 			{
 			case Action::_end: action.type = Action::_end; break;
 			case Action::_delay:
@@ -301,7 +371,7 @@ static void _stdcall LoadItem(const neb::CJsonObject jActions, Actions& actions)
 				jItem.Get("top", (int32&)(action.color.rect.top));
 				jItem.Get("right", (int32&)(action.color.rect.right));
 				jItem.Get("bottom", (int32&)(action.color.rect.bottom));
-				jItem.Get("rgbe", (uint32&)(action.color.rgbe));
+				jItem.Get("rgbe", ui32); action.color.rgbe.set(ui32);
 				jItem.Get("next", jNext);
 				LoadItem(jNext, action.color.next);
 			}
@@ -408,67 +478,4 @@ static std::wstring NameFilter(std::wstring name)
 		}
 	}
 	return L"";
-}
-
-static DWORD CALLBACK ThreadWndActive(LPVOID)
-{
-	while (Global::qi.state)
-	{
-		Global::qi.fun.wndActive.wnd = FindWindowW(0, Global::qi.fun.wndActive.name.c_str());
-		if (Global::qi.fun.wndActive.wnd)
-		{
-			bool active = (GetForegroundWindow() == Global::qi.fun.wndActive.wnd);
-			if (!Global::qi.fun.wndActive.active && active)
-			{
-				Global::qi.fun.wndActive.active = 1;
-
-				if (Global::qi.set.showTips)
-				{
-					TipsWindow::Popup(L"已启用 - 窗口内", RGB(0xA0, 0xFF, 0xC0));
-				}
-
-			}
-			else if (Global::qi.fun.wndActive.active && !active)
-			{
-				Global::qi.fun.wndActive.active = 0;
-
-				if (Global::qi.set.showTips)
-				{
-					TipsWindow::Popup(L"已禁用 - 窗口外", RGB(0xFF, 0x80, 0x80));
-				}
-			}
-		}
-		sleep(100);
-	}
-	Global::qi.fun.wndActive.thread = 0;
-	return 0;
-}
-
-static void HookState(bool state)
-{
-	if (state)
-	{
-		if (!InputHook::Start(InputHook::all, 1)) MsgBox::Error(L"创建输入Hook失败，检查是否管理员身份运行 或 是否被安全软件拦截。");
-	}
-	else InputHook::Stop(InputHook::all);
-}
-
-static void QiState(bool state)
-{
-	if (state)
-	{
-		Global::qi.state = 1;
-		Global::qi.ReScreen();
-		TipsWindow::screen = Global::qi.screen;
-		TipsWindow::Popup(UI::qiOn);
-		if (Global::qi.set.audFx)Media::WavePlay(audfx.on);
-		if (Global::qi.fun.wndActive.state) Global::qi.fun.wndActive.thread = Thread::Start(ThreadWndActive);
-		else Global::qi.fun.wndActive.active = 1;
-	}
-	else
-	{
-		Global::qi.state = 0;
-		TipsWindow::Popup(UI::qiOff, RGB(0xFF, 0x50, 0x50));
-		if (Global::qi.set.audFx)Media::WavePlay(audfx.off);
-	}
 }

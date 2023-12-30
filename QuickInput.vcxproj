@@ -135,7 +135,6 @@
     <QtMoc Include=".h\QColorSelection.h" />
     <QtMoc Include=".h\QPositionSelection.h" />
     <QtMoc Include=".h\QSelectionBox.h" />
-    <ClInclude Include=".h\Action.h" />
     <ClInclude Include=".h\TipsWindow.h" />
     <QtMoc Include=".h\EditUi.h" />
     <QtMoc Include=".h\MacroUi.h" />

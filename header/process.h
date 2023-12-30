@@ -18,8 +18,8 @@ namespace CG {
 
 		static std::wstring exeName() { return File::FileName(exePath()); }
 
-		static bool isRunning(LPCWSTR instanceName) { HANDLE handle = CreateMutexW(0, 0, instanceName); if (GetLastError() == ERROR_ALREADY_EXISTS) { CloseHandle(handle); return 1; } CloseHandle(handle); return 0; }
-		static void RunOnce(LPCWSTR instanceName) { HANDLE handle = CreateMutexW(0, 0, instanceName); if (GetLastError() == ERROR_ALREADY_EXISTS) { CloseHandle(handle); exit(0); } }
+		static bool isRunning(LPCWSTR mutexName) { HANDLE handle = CreateMutexW(0, 0, mutexName); if (GetLastError() == ERROR_ALREADY_EXISTS) { CloseHandle(handle); return 1; } CloseHandle(handle); return 0; }
+		static void RunOnce(LPCWSTR mutexName) { HANDLE handle = CreateMutexW(0, 0, mutexName); if (GetLastError() == ERROR_ALREADY_EXISTS) { CloseHandle(handle); exit(0); } }
 
 		// include .exe, return pid
 		static DWORD State(const std::wstring exe) {

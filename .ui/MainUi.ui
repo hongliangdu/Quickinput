@@ -184,6 +184,9 @@ font-size:14px;</string>
          <property name="focusPolicy">
           <enum>Qt::ClickFocus</enum>
          </property>
+         <property name="toolTip">
+          <string>关闭</string>
+         </property>
          <property name="styleSheet">
           <string notr="true">QPushButton{background-color:#E00;width:20px;height:20px;border-radius:10px;}
 QPushButton:hover{background-color:#C00;}</string>
@@ -210,6 +213,9 @@ QPushButton:hover{background-color:#C00;}</string>
          <property name="focusPolicy">
           <enum>Qt::ClickFocus</enum>
          </property>
+         <property name="toolTip">
+          <string>隐藏</string>
+         </property>
          <property name="styleSheet">
           <string notr="true">QPushButton{background-color:#FC0;width:20px;height:20px;border-radius:10px;}
 QPushButton:hover{background-color:#DA0;}</string>
@@ -235,6 +241,9 @@ QPushButton:hover{background-color:#DA0;}</string>
          </property>
          <property name="focusPolicy">
           <enum>Qt::ClickFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>最小化</string>
          </property>
          <property name="styleSheet">
           <string notr="true">QPushButton{background-color:#0D0;width:20px;height:20px;border-radius:10px;}
