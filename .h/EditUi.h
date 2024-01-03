@@ -331,7 +331,7 @@ private:
 				if (actions[0][u].mouse.move) ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acMove));
 				else ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acPos));
 				ps = QString::number(actions[0][u].mouse.x);
-				ps += u8" - ";
+				ps += u8", ";
 				ps += QString::number(actions[0][u].mouse.y);
 				ps += u8"ㅤㅤ";
 				ps += QString::number(actions[0][u].mouse.ex);
