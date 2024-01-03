@@ -3,13 +3,11 @@
 #include ".h/MainUi.h"
 #include "static.h"
 
-byte block = 0;
-
 void SwitchKey(BYTE vk, bool state)
 {
 	if (vk == VK_SHIFT) Global::qi.set.shift = state;
 	else if (vk == VK_F12) Global::qi.set.f12 = state;
-	if (Global::qi.set.shift && Global::qi.set.f12) { QiState(0); return; }
+	if (Global::qi.set.shift && Global::qi.set.f12) { QiState(0), HookState(0); return; }
 
 	if ((Global::qi.set.key & 0xFFFF) == vk) Global::qi.set.k1 = state;
 	if (!(Global::qi.set.key >> 16)) Global::qi.set.k2 = 1;
@@ -33,8 +31,7 @@ void TriggerKey(BYTE vk, bool state)
 		TipsWindow::Popup(text);
 	}
 
-	if (!Global::qi.state) return;
-	if (!Global::qi.fun.wndActive.active) return;
+	if (!Global::qi.run) return;
 
 	if (Global::qi.fun.quickClick.state && Global::qi.fun.quickClick.key == vk)
 	{
@@ -83,9 +80,9 @@ void TriggerKey(BYTE vk, bool state)
 	{
 		if (Global::qi.scripts[n].state)
 		{
-			if ((Global::qi.scripts[n].key & 0xFFFF) == vk) Global::qi.scripts[n].k1 = state, Global::qi.scripts[n].block ? block = vk : 0;
+			if ((Global::qi.scripts[n].key & 0xFFFF) == vk) Global::qi.scripts[n].k1 = state;
 			if ((Global::qi.scripts[n].key >> 16) == 0) Global::qi.scripts[n].k2 = 1;
-			else if ((Global::qi.scripts[n].key >> 16) == vk) Global::qi.scripts[n].k2 = state, Global::qi.scripts[n].block ? block = vk : 0;
+			else if ((Global::qi.scripts[n].key >> 16) == vk) Global::qi.scripts[n].k2 = state;
 
 			if (Global::qi.scripts[n].mode == Script::sw)
 			{
@@ -185,23 +182,26 @@ InputHookProc()
 	}
 	else if (vk)
 	{
-		block = 0;
-		
 		if (state)
 		{
-			if (Global::qi.rec)
+			if (!Global::blockRep[vk])
 			{
-				if (Global::qi.set.recKey == vk) return 1;
-				else if (((RecordUi*)Global::qi.rec)->State()) ((RecordUi*)Global::qi.rec)->AddItems(Input::Convert(vk), state, msPt);
-			}
-			else
-			{
-				SwitchKey(Input::Convert(vk), state);
-				TriggerKey(Input::Convert(vk), 1);
+				Global::blockRep[vk] = 1;
+				if (Global::qi.rec)
+				{
+					if (Global::qi.set.recKey == vk) return 1;
+					else if (((RecordUi*)Global::qi.rec)->State()) ((RecordUi*)Global::qi.rec)->AddItems(Input::Convert(vk), state, msPt);
+				}
+				else
+				{
+					SwitchKey(Input::Convert(vk), state);
+					TriggerKey(Input::Convert(vk), 1);
+				}
 			}
 		}
 		else
 		{
+			Global::blockRep[vk] = 0;
 			if (Global::qi.rec)
 			{
 				if (Global::qi.set.recKey == Input::Convert(vk)) ((RecordUi*)Global::qi.rec)->EndRec();
@@ -214,16 +214,20 @@ InputHookProc()
 				TriggerKey(Input::Convert(vk), 0);
 			}
 		}
-
-		if (block == vk) return 1;
+		for (uint32 u = 0; u < Global::trBlock.size(); u++) if (Global::trBlock[u] == vk) return 1;
 	}
-
 	return 0;
 }
 
 int main(int argc, char* argv[])
 {
-	if (Process::isRunning(File::PathToUrl(Process::runPath()).c_str())) MsgBox::Warning(L"当前文件夹的程序已经运行，若运行更多程序请复制此文件夹", L"提示"), exit(0);
+	std::wstring mutex = File::PathToUrl(Process::runPath());
+	if (Process::isRunning(mutex.c_str()))
+	{
+		MsgBox::Warning(L"当前文件夹的程序已经运行，若运行更多程序请复制此文件夹", L"提示");
+		return 0;
+	}
+	CreateMutexW(0, 0, mutex.c_str());
 	timeBeginPeriod(1);
 
 	LoadJson();
@@ -235,8 +239,12 @@ int main(int argc, char* argv[])
 	TipsWindow::thread = Thread::Start(TipsWindow::TipsWindowThread);
 
 	MainUi wnd;
-	if (!Global::qi.set.minMode) wnd.show();
-	if (Global::qi.set.defOn) HookState(1), QiState(1);
+	if (Global::qi.set.minMode)
+	{
+		HookState(1);
+		if (Global::qi.set.defOn) QiState(1);
+	}
+	else wnd.show();
 
 	app.exec();
 	timeEndPeriod(1);

@@ -35,8 +35,6 @@ namespace CG {
 			return { client.x - window.left - 8, client.y - window.top };
 		}
 
-		static LRESULT CALLBACK DefWndProc(HWND wnd, UINT msg, WPARAM wp, LPARAM lp) { return DefWindowProcW(wnd, msg, wp, lp); }
-
 		static void Register(LPCWSTR className, WNDPROC wndProc, bool transparent = 0, COLORREF color = RGB(255, 255, 255), HICON icon = 0, INT menu = 0) {
 			WNDCLASSW wndClass = { 0 };
 			wndClass.lpszClassName = className;
@@ -49,7 +47,7 @@ namespace CG {
 		}
 
 		static HWND Create(
-			LPCWSTR wndName, LPCWSTR className, DWORD style = WS_OVERLAPPEDWINDOW, DWORD exStyle = 0,
+			LPCWSTR wndName, LPCWSTR className, DWORD style = WS_OVERLAPPED, DWORD exStyle = 0,
 			int width = CW_USEDEFAULT, int height = CW_USEDEFAULT, int x = CW_USEDEFAULT, int y = CW_USEDEFAULT,
 			HWND parent = 0, HMENU menu = 0, HINSTANCE instance = GetModuleHandleW(0)
 		) {

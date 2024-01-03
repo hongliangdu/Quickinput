@@ -63,25 +63,16 @@ namespace CG {
 			}
 		}
 
-		static std::wstring FileName(std::wstring path) {
-			size_t len = path.length() - 1;
-			while ((len > 0) && (path[len] != L'\\')) len--;
-			return path.substr(len + 1);
+		static std::wstring PathLast(std::wstring path) {
+			size_t p = path.length() - 1;
+			while ((p > 0) && (path[p] != L'\\')) p--;
+			return path.substr(p + 1);
 		}
 
-		static LPCWSTR PathChange(LPCWSTR absPath, LPCWSTR relPath) {
-			WCHAR path[MAX_PATH];
-			if (String::Compare(relPath, L"..")) swprintf_s(path, MAX_PATH, L"%s", PathLast(absPath).c_str());
-			else {
-				swprintf_s(path, MAX_PATH, L"%s%s", absPath, relPath);
-			}
-			return path;
-		}
-
-		static std::wstring PathLast(std::wstring absPath) {
-			size_t p = absPath.length() - 1;
-			while ((p > 0) && (absPath[p] != L'\\')) p--;
-			return absPath.substr(0, p);
+		static std::wstring PathPrev(std::wstring path) {
+			size_t p = path.length() - 1;
+			while ((p > 0) && (path[p] != L'\\')) p--;
+			return path.substr(0, p);
 		}
 
 		static bool FileNameOk(std::wstring path)

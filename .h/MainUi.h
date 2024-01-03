@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <qsystemtrayicon.h>
+#include <qmenu.h>
 #include "MacroUi.h"
 #include "TriggerUi.h"
 #include "FuncUi.h"
@@ -10,7 +11,22 @@
 
 class MainUi : public QMainWindow
 {
-	Q_OBJECT
+	Q_OBJECT;
+
+	Ui::MainUiClass ui;
+	QSystemTrayIcon* tray = 0;
+	QMenu* menu = 0;
+
+	QWidget* wm = 0;
+	QWidget* wt = 0;
+	QWidget* wf = 0;
+	QWidget* ws = 0;
+	QWidget* wa = 0;
+
+	QString styleOn = R"(QPushButton{background-color:#CEF;border:none;font-family:"Microsoft YaHei";font-size:18px;})";
+	QString styleOff = R"(QPushButton{background-color:#ADE;border:none;font-family:"Microsoft YaHei";font-size:18px;}QPushButton:hover{background-color: #C0E2F2;})";
+
+	QPoint msPos;
 
 public:
 	MainUi() : QMainWindow()
@@ -18,7 +34,32 @@ public:
 		ui.setupUi(this);
 		setWindowFlags(Qt::FramelessWindowHint);
 		setAttribute(Qt::WA_TranslucentBackground);
+		WidInit();
+	}
 
+private:
+	void MenuInit()
+	{
+		menu = new QMenu(this);
+		QAction* tnon = new QAction(UI::muOn, this);
+		QAction* tnoff = new QAction(UI::muOff, this);
+		QAction* show = new QAction(UI::muShow, this);
+		QAction* hide = new QAction(UI::muHide, this);
+		QAction* exit = new QAction(UI::muExit, this);
+		menu->addAction(tnon);
+		menu->addAction(tnoff);
+		menu->addAction(show);
+		menu->addAction(hide);
+		menu->addAction(exit);
+		tray->setContextMenu(menu);
+		connect(tnon, SIGNAL(triggered()), this, SLOT(OnMenuTnon()));
+		connect(tnoff, SIGNAL(triggered()), this, SLOT(OnMenuTnoff()));
+		connect(show, SIGNAL(triggered()), this, SLOT(OnMenuShow()));
+		connect(hide, SIGNAL(triggered()), this, SLOT(OnMenuHide()));
+		connect(exit, SIGNAL(triggered()), this, SLOT(OnMenuExit()));
+	}
+	void WidInit()
+	{
 		{
 			tray = new QSystemTrayIcon(this);
 			tray->setIcon(QIcon(":/icon.png"));
@@ -47,25 +88,9 @@ public:
 			connect(ui.bnSettings, SIGNAL(clicked()), this, SLOT(OnBnSettings()));
 			connect(ui.bnAbout, SIGNAL(clicked()), this, SLOT(OnBnAbout()));
 		}
-
+		MenuInit();
 		ShowWnd(wm);
 	}
-
-private:
-
-	Ui::MainUiClass ui;
-	QSystemTrayIcon* tray = 0;
-
-	QWidget* wm = 0;
-	QWidget* wt = 0;
-	QWidget* wf = 0;
-	QWidget* ws = 0;
-	QWidget* wa = 0;
-
-	QString styleOn = R"(QPushButton{background-color:#CEF;border:none;font-family:"Microsoft YaHei";font-size:18px;})";
-	QString styleOff = R"(QPushButton{background-color:#ADE;border:none;font-family:"Microsoft YaHei";font-size:18px;}QPushButton:hover{background-color: #C0E2F2;})";
-
-	QPoint msPos;
 
 	void ShowWnd(QWidget* wnd)
 	{
@@ -91,9 +116,6 @@ private:
 		wnd->show();
 	}
 
-	void mousePressEvent(QMouseEvent* et) { if (et->buttons() & Qt::LeftButton) msPos = et->pos(); }
-	void mouseMoveEvent(QMouseEvent* et) { if (et->buttons() & Qt::LeftButton) move(et->pos() + pos() - msPos); }
-
 	bool event(QEvent* et)
 	{
 		if (et->type() == QEvent::WindowActivate)
@@ -103,13 +125,14 @@ private:
 		}
 		else if (et->type() == QEvent::WindowDeactivate)
 		{
-			if (((MacroUi*)wm)->working) return QWidget::event(et);
-			if (Global::qi.set.defOn) QiState(1);
-			HookState(1);
+			if (!((MacroUi*)wm)->working && !((FuncUi*)wf)->working)
+			{
+				if (Global::qi.set.defOn) QiState(1);
+				HookState(1);
+			}
 		}
 		return QWidget::event(et);
 	}
-
 	void closeEvent(QCloseEvent*)
 	{
 		wm->close();
@@ -118,16 +141,16 @@ private:
 		ws->close();
 		wa->close();
 	}
+	void mousePressEvent(QMouseEvent* et) { if (et->buttons() & Qt::LeftButton) msPos = et->pos(); }
+	void mouseMoveEvent(QMouseEvent* et) { if (et->buttons() & Qt::LeftButton) move(et->pos() + pos() - msPos); }
 
 private slots:
-	void OnTrayClick(QSystemTrayIcon::ActivationReason reason)
-	{
-		if (reason == QSystemTrayIcon::Trigger)
-		{
-			setWindowState(Qt::WindowNoState);
-			show();
-		}
-	}
+	void OnTrayClick(QSystemTrayIcon::ActivationReason reason) { if (reason == QSystemTrayIcon::Trigger) setWindowState(Qt::WindowNoState), show(), Window::Top((HWND)QWidget::winId()); }
+	void OnMenuTnon() { if (!((MacroUi*)wm)->working && !((FuncUi*)wf)->working) QiState(1), HookState(1); }
+	void OnMenuTnoff() { QiState(0); HookState(0); }
+	void OnMenuShow() { setWindowState(Qt::WindowNoState), show(), Window::Top((HWND)QWidget::winId()); }
+	void OnMenuHide() { hide(); }
+	void OnMenuExit() { close(); }
 
 	void OnBnClose() { close(); }
 	void OnBnMin() { setWindowState(Qt::WindowMinimized); }

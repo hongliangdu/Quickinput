@@ -129,6 +129,7 @@
     <QtMoc Include=".h\MainUi.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TashMenu.h" />
     <QtMoc Include=".h\QPointView.h" />
     <QtMoc Include=".h\QRectView.h" />
     <ClInclude Include="static.h" />

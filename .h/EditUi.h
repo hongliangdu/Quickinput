@@ -306,11 +306,11 @@ private:
 			QString ps;
 			switch (actions[0][u].type)
 			{
-			case Action::_end: ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiEnd)); break;
+			case Action::_end: ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acEnd)); break;
 			
 			case Action::_delay:
 			{
-				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiWait));
+				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acWait));
 				ps = QString::number(actions[0][u].delay.ms);
 				ps += u8"ㅤㅤ";
 				ps += QString::number(actions[0][u].delay.ex);
@@ -319,17 +319,17 @@ private:
 			
 			case Action::_key:
 			{
-				if (actions[0][u].key.state == Action::Key::up) ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiUp));
-				else if (actions[0][u].key.state == Action::Key::down) ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiDown));
-				else if (actions[0][u].key.state == Action::Key::click) ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiClick));
+				if (actions[0][u].key.state == Action::Key::up) ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acUp));
+				else if (actions[0][u].key.state == Action::Key::down) ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acDown));
+				else if (actions[0][u].key.state == Action::Key::click) ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acClick));
 				ps = QString::fromWCharArray(Input::Name(actions[0][u].key.vk));
 			}
 			break;
 			
 			case Action::_mouse:
 			{
-				if (actions[0][u].mouse.move) ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiMove));
-				else ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiPos));
+				if (actions[0][u].mouse.move) ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acMove));
+				else ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acPos));
 				ps = QString::number(actions[0][u].mouse.x);
 				ps += u8" - ";
 				ps += QString::number(actions[0][u].mouse.y);
@@ -340,7 +340,7 @@ private:
 			
 			case Action::_text:
 			{
-				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiText));
+				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acText));
 				std::wstring text = actions[0][u].text.str.str;
 				ps = QString::fromWCharArray(text.substr(0, 32).c_str());
 				if (text.length() > 31) ps += u8"...";
@@ -349,7 +349,7 @@ private:
 			
 			case Action::_color:
 			{
-				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiColor));
+				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acColor));
 				ps = u8"(";
 				ps += QString::number(actions[0][u].color.rect.left);
 				ps += u8",";
@@ -378,13 +378,13 @@ private:
 			
 			case Action::_loop:
 			{
-				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiLoop));
+				ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acLoop));
 				if (actions[0][u].loop.count) ps = QString::number(actions[0][u].loop.count);
 				else ps = u8"无限";
 			}
 			break;
 
-			case Action::_loopEnd: ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::qiEndLoop)); break;
+			case Action::_loopEnd: ui.tbItem->setItem(u, 0, new QTableWidgetItem(UI::acEndLoop)); break;
 
 			default: ui.tbItem->setItem(u, 0, new QTableWidgetItem(u8"加载失败")); break;
 			}

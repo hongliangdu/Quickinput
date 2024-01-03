@@ -16,7 +16,7 @@ namespace CG {
 
 		static std::wstring exePath() { WCHAR path[MAX_PATH]; GetModuleFileNameW(0, path, MAX_PATH); return path; }
 
-		static std::wstring exeName() { return File::FileName(exePath()); }
+		static std::wstring exeName() { return File::PathLast(exePath()); }
 
 		static bool isRunning(LPCWSTR mutexName) { HANDLE handle = CreateMutexW(0, 0, mutexName); if (GetLastError() == ERROR_ALREADY_EXISTS) { CloseHandle(handle); return 1; } CloseHandle(handle); return 0; }
 		static void RunOnce(LPCWSTR mutexName) { HANDLE handle = CreateMutexW(0, 0, mutexName); if (GetLastError() == ERROR_ALREADY_EXISTS) { CloseHandle(handle); exit(0); } }

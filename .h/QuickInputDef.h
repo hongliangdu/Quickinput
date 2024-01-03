@@ -7,19 +7,46 @@
 #include "D:/#CGDATA/Code/cpp/CJsonObject.h"
 
 struct UI {
+	static QString syOn;
+	static QString syOff;
+	static QString syOk;
+	static QString syNot;
+	static QString syStop;
+	static QString syShow;
+	static QString syHide;
+	static QString syOption;
+	static QString syLink;
+	static QString syEdit;
+	static QString syUp;
+	static QString syDown;
+	static QString syTurn;
+	static QString syLeft;
+	static QString syTop;
+	static QString syRight;
+	static QString syMove;
+	static QString syTime;
+	static QString syText;
+	static QString syLoop;
+	static QString syColor;
+
 	static std::wstring qiOn;
 	static std::wstring qiOff;
-	static QString qiWait;
-	static QString qiDown;
-	static QString qiUp;
-	static QString qiClick;
-	static QString qiPos;
-	static QString qiMove;
-	static QString qiLoop;
-	static QString qiText;
-	static QString qiColor;
-	static QString qiEnd;
-	static QString qiEndLoop;
+	static QString muOn;
+	static QString muOff;
+	static QString muShow;
+	static QString muHide;
+	static QString muExit;
+	static QString acWait;
+	static QString acDown;
+	static QString acUp;
+	static QString acClick;
+	static QString acPos;
+	static QString acMove;
+	static QString acLoop;
+	static QString acText;
+	static QString acColor;
+	static QString acEnd;
+	static QString acEndLoop;
 	static QString trOn;
 	static QString trOff;
 	static QString etChange;
@@ -136,7 +163,6 @@ struct ShowClock
 
 struct WndActive
 {
-	bool active = 0;
 	bool state = 0;
 	HWND wnd = 0;
 	HANDLE thread = 0;
@@ -167,6 +193,7 @@ struct QuickInputStruct
 {
 public:
 	bool state = 0;
+	bool run = 0;
 	Scripts scripts;
 	FuncData fun;
 	SettingsData set;
@@ -187,7 +214,11 @@ public:
 	}
 };
 
-struct Global { static QuickInputStruct qi; };
+struct Global {
+	static QuickInputStruct qi;
+	static List<byte> trBlock;
+	static byte blockRep[255];
+};
 
 static POINT RelToAbs(POINT rel) { return { (long)(((double)rel.x / ((double)Global::qi.screen.cx - 1.0)) * 10000.0), (long)(((double)rel.y / ((double)Global::qi.screen.cy - 1.0)) * 10000.0) }; }
 

@@ -245,7 +245,7 @@ private slots:
 		if (path == "") return;
 
 		std::wstring srcFile = path.toStdWString();
-		std::wstring newFile = L"macro\\" + File::FileName(srcFile);
+		std::wstring newFile = L"macro\\" + File::PathLast(srcFile);
 
 		File::FolderCreate(L"macro");
 		if (File::FileState(newFile))

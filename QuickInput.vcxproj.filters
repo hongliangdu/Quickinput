@@ -118,6 +118,9 @@
     <ClInclude Include="static.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TashMenu.h">
+      <Filter>Header Files\Ui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include=".res\QuickInput.qrc">

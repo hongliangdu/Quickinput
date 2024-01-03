@@ -8,6 +8,7 @@ class FuncUi : public QWidget
 	Q_OBJECT
 
 public:
+	bool working = 0;
 
 	FuncUi(QWidget* parent) : QWidget(parent)
 	{
@@ -57,50 +58,17 @@ private:
 
 private slots:
 
-	void OnQkClickKey()
-	{
-		func->quickClick.key = ui.hkQkClick->virtualKey();
-		SaveJson();
-	}
-
-	void OnQkDelay(const QString& text)
-	{
-		func->quickClick.delay = text.toInt();
-		SaveJson();
-	}
-
-	void OnShowClock()
-	{
-		func->showClock.key = ui.hkClock->virtualKey();
-		SaveJson();
-	}
-
-	void OnQkClick(int state)
-	{
-		func->quickClick.state = state;
-		SaveJson();
-	}
-
-	void OnClock(int state)
-	{
-		func->showClock.state = state;
-		SaveJson();
-	}
-
-	void OnCmbMode(int row)
-	{
-		func->quickClick.mode = row;
-		SaveJson();
-	}
-
-	void OnWndActive(int state)
-	{
-		func->wndActive.state = state;
-		SaveJson();
-	}
+	void OnQkClickKey() { func->quickClick.key = ui.hkQkClick->virtualKey(); SaveJson(); }
+	void OnQkDelay(const QString& text) { func->quickClick.delay = text.toInt(); SaveJson(); }
+	void OnShowClock() { func->showClock.key = ui.hkClock->virtualKey(); SaveJson(); }
+	void OnQkClick(int state) { func->quickClick.state = state; SaveJson(); }
+	void OnClock(int state) { func->showClock.state = state; SaveJson(); }
+	void OnCmbMode(int row) { func->quickClick.mode = row; SaveJson(); }
+	void OnWndActive(int state) { func->wndActive.state = state; SaveJson(); }
 
 	void OnBnWndActive()
 	{
+		working = 1;
 		parentWidget()->hide();
 		TipsWindow::Show(L"按回车开始，切换到对应窗口并再按回车", RGB(0x20, 0xFF, 0x20));
 		while (!Input::state(VK_RETURN)) sleep(10);
@@ -115,6 +83,7 @@ private slots:
 		}
 		TipsWindow::Popup(func->wndActive.name, RGB(0x20, 0xFF, 0x20));
 		ui.etWndActive->setText(QString::fromWCharArray(func->wndActive.name.c_str()));
+		working = 0;
 		parentWidget()->show();
 
 		SaveJson();
