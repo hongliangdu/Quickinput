@@ -7,7 +7,7 @@ void SwitchKey(BYTE vk, bool state)
 {
 	if (vk == VK_SHIFT) Global::qi.set.shift = state;
 	else if (vk == VK_F12) Global::qi.set.f12 = state;
-	if (Global::qi.set.shift && Global::qi.set.f12) { QiState(0), HookState(0); return; }
+	if (Global::qi.set.shift && Global::qi.set.f12) { QiState(0); return; }
 
 	if ((Global::qi.set.key & 0xFFFF) == vk) Global::qi.set.k1 = state;
 	if (!(Global::qi.set.key >> 16)) Global::qi.set.k2 = 1;
@@ -214,7 +214,7 @@ InputHookProc()
 				TriggerKey(Input::Convert(vk), 0);
 			}
 		}
-		for (uint32 u = 0; u < Global::trBlock.size(); u++) if (Global::trBlock[u] == vk) return 1;
+		if (Global::qi.run) for (uint32 u = 0; u < Global::trBlock.size(); u++) if (Global::trBlock[u] == vk) return 1;
 	}
 	return 0;
 }
